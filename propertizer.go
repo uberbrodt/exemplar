@@ -34,10 +34,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	//"sort"
 	"strings"
 
-	//"golang.org/x/tools/go/exact"
 	"golang.org/x/tools/go/types"
 
 	_ "golang.org/x/tools/go/gcimporter"
