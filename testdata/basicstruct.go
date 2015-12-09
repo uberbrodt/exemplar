@@ -17,7 +17,7 @@ func main() {
 	privateField := "shouldnotread"
 
 	currentTime := time.Now()
-	bs := Basicstruct{id: 10, date: currentTime, status: "FooBar", privateField: privateField}
+	bs := &Basicstruct{id: 10, date: currentTime, status: "FooBar", privateField: privateField}
 
 	if bs.ID() != 10 {
 		log.Panicf("BasicStruct.ID() returned: %d not %d", bs.ID(), 10)
@@ -29,9 +29,9 @@ func main() {
 		log.Panicf("BasicStruct.Status() returned: %s, not %s", bs.Status(), "FooBar")
 	}
 
-	typ := reflect.TypeOf(bs)
-	if _, ok := typ.MethodByName("privateField"); !ok {
-		log.Panicf("BasicStruct.privateField() created. 'private' struct tag ignored")
+	typ := reflect.ValueOf(bs)
+	if val := typ.MethodByName("PrivateField"); val.IsValid() {
+		log.Panicf("BasicStruct.PrivateField() created. 'private' struct tag ignored")
 	}
 
 }

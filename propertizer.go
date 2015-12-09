@@ -378,14 +378,12 @@ func (f *File) genDecl(node ast.Node) bool {
 				fieldObj, _, _ := types.LookupFieldOrMethod(typesObj.Type(), false, f.pkg.typesPkg, field.Name)
 
 				typeStr := fieldObj.Type().String()
+				tags := findPropertizerTag(fieldLine.Tag)
 
-				//TODO: Skip fields with propertizer: private tag
-				if fieldLine.Tag == nil {
-					///log.Println(fieldLine.Comment)
-					//if strings.Contains(fieldLine.Tag.Value, `propertizer`) {
-
-					//	continue
-					//}
+				if tags.Private {
+					log.Printf("Skipping field %s because it's marked private",
+						field.Name)
+					continue
 				}
 
 				if strings.Contains(typeStr, ".") {
@@ -408,6 +406,31 @@ func (f *File) genDecl(node ast.Node) bool {
 		}
 	}
 	return false
+}
+
+type PropertizerTags struct {
+	Private bool
+}
+
+func findPropertizerTag(tagString *ast.BasicLit) PropertizerTags {
+	if tagString != nil {
+		sanitized := strings.Replace(tagString.Value, "`", "", -1)
+		structtags := strings.Split(sanitized, " ")
+		for _, tag := range structtags {
+			if strings.Contains(tag, "propertizer") {
+				propertizerTags := PropertizerTags{}
+				tagVal := strings.Split(tag, ":")[1]
+				tagVals := strings.Split(strings.Replace(tagVal, "\"", "", -1), ",")
+				for _, property := range tagVals {
+					if property == "private" {
+						propertizerTags.Private = true
+					}
+				}
+				return propertizerTags
+			}
+		}
+	}
+	return PropertizerTags{Private: false}
 }
 
 func matchImport(objectImportId string, importSpec *ast.ImportSpec) bool {
