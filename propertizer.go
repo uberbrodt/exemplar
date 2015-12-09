@@ -375,10 +375,18 @@ func (f *File) genDecl(node ast.Node) bool {
 				if field.Name == "_" {
 					continue
 				}
-				//TODO: Skip fields with propertizer: private tag
 				fieldObj, _, _ := types.LookupFieldOrMethod(typesObj.Type(), false, f.pkg.typesPkg, field.Name)
 
 				typeStr := fieldObj.Type().String()
+
+				//TODO: Skip fields with propertizer: private tag
+				if fieldLine.Tag == nil {
+					///log.Println(fieldLine.Comment)
+					//if strings.Contains(fieldLine.Tag.Value, `propertizer`) {
+
+					//	continue
+					//}
+				}
 
 				if strings.Contains(typeStr, ".") {
 					typeSplit := strings.Split(typeStr, ".")
