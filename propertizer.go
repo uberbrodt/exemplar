@@ -43,15 +43,16 @@ import (
 )
 
 var (
-	typeNames = flag.String("type", "", "comma-separated list of type names; must be set")
-	output    = flag.String("output", "", "output file name; default srcdir/<type>_string.go")
+	typeNames    = flag.String("type", "", "comma-separated list of type names; must be set")
+	output       = flag.String("output", "", "output file name; default srcdir/<type>_properties.go")
+	getterPrefix = flag.Bool("getterPrefix", false, "Prefix the accessor methods with Get")
 )
 
 // Usage is a replacement usage function for the flags package.
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "\tpropertizer [flags] -type T [directory]\n")
-	fmt.Fprintf(os.Stderr, "\tpropertizer [flags[ -type T files... # Must be a single package\n")
+	fmt.Fprintf(os.Stderr, "\tpropertizer [flags] -getterPrefix -type T [directory]\n")
+	fmt.Fprintf(os.Stderr, "\tpropertizer [flags[ -getterPrefix -type T files... # Must be a single package\n")
 	fmt.Fprintf(os.Stderr, "Flags:\n")
 	flag.PrintDefaults()
 }
@@ -279,8 +280,13 @@ func (g *Generator) generate(typeName string) {
 func (g *Generator) buildAccessor(f Field, typeName string) {
 	//Make Id ID per Go std, upper case private fields
 	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
-	g.Printf("func (this *%s) %s() %s {\n", typeName, tempStr,
-		f.typeName)
+	if *getterPrefix {
+		g.Printf("func (this *%s) Get%s() %s {\n", typeName, tempStr,
+			f.typeName)
+	} else {
+		g.Printf("func (this *%s) %s() %s {\n", typeName, tempStr,
+			f.typeName)
+	}
 	g.Printf("  return this.%s \n", f.name)
 	g.Printf("}\n")
 }
