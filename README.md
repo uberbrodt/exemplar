@@ -1,4 +1,4 @@
-#Propertizer: A generator mutators and accessors for Go struct types.
+#Propertizer: Generate mutators and accessors for Go struct types.
 
 Basically a rip off of [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer), but generates you Getters and Setters for structs.
 
