@@ -43,9 +43,10 @@ import (
 )
 
 var (
-	typeNames    = flag.String("type", "", "comma-separated list of type names; must be set")
-	output       = flag.String("output", "", "output file name; default srcdir/<type>_properties.go")
-	getterPrefix = flag.Bool("getterPrefix", false, "Prefix the accessor methods with Get")
+	typeNames     = flag.String("type", "", "comma-separated list of type names; must be set")
+	output        = flag.String("output", "", "output file name; default srcdir/<type>_properties.go")
+	getterPrefix  = flag.Bool("getterPrefix", false, "Prefix the accessor methods with Get")
+	interfaceName = flag.String("interfaceName", "", "If set, creates an interface with the name provided for the struct methods")
 )
 
 // Usage is a replacement usage function for the flags package.
@@ -276,7 +277,34 @@ func (g *Generator) generate(typeName string) {
 		g.buildAccessor(field, typeName)
 		g.buildMutator(field, typeName)
 	}
+
+	if *interfaceName != "" {
+		g.Printf("\n")
+		g.Printf("type %s interface {\n", *interfaceName)
+		for _, field := range fields {
+			g.buildInterfaceAccessor(field, typeName)
+			g.buildInterfaceMutator(field, typeName)
+
+		}
+
+		g.Printf("}")
+	}
 }
+
+func (g *Generator) buildInterfaceAccessor(f Field, typeName string) {
+	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
+	if *getterPrefix {
+		g.Printf("Get%s() %s\n", tempStr, f.typeName)
+	} else {
+		g.Printf("%s() %s\n", tempStr, f.typeName)
+	}
+}
+
+func (g *Generator) buildInterfaceMutator(f Field, typeName string) {
+	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
+	g.Printf("Set%s(x %s) \n", tempStr, f.typeName)
+}
+
 func (g *Generator) buildAccessor(f Field, typeName string) {
 	//Make Id ID per Go std, upper case private fields
 	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
