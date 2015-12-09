@@ -3,13 +3,16 @@ package main
 import "time"
 import "log"
 import "reflect"
+import "github.com/traitify/common-go/unixtime"
 
 type Basicstruct struct {
 	id           int
 	date         time.Time
+	prevDate     time.Time
 	status       string
 	hiddenField  string
 	privateField string `propertizer:"private"`
+	modifiedAt   unixtime.Millis
 }
 
 func main() {

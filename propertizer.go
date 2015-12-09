@@ -146,7 +146,6 @@ type File struct {
 
 type Import struct {
 	ImportedName string
-	Path         *ast.BasicLit
 }
 
 type Package struct {
@@ -260,7 +259,6 @@ func (g *Generator) generate(typeName string) {
 			ast.Inspect(file.file, file.genDecl)
 			fields = append(fields, file.fields...)
 			imports = append(imports, file.imports...)
-
 		}
 	}
 
@@ -270,7 +268,7 @@ func (g *Generator) generate(typeName string) {
 	}
 
 	for _, imprt := range imports {
-		g.Printf("import %s \n", imprt.Path.Value)
+		g.Printf("import \"%s\" \n", imprt.ImportedName)
 	}
 
 	for _, field := range fields {
@@ -386,20 +384,18 @@ func (f *File) genDecl(node ast.Node) bool {
 					continue
 				}
 
-				if strings.Contains(typeStr, ".") {
-					typeSplit := strings.Split(typeStr, ".")
-					for _, importSpec := range f.file.Imports {
-						if matchImport(typeSplit[0], importSpec) {
-							if !importExists(typeSplit[0], f.imports) {
-								f.imports = append(f.imports, Import{typeSplit[0], importSpec.Path})
-							}
-						}
-					}
+				processedTypeStr, importPath := processTypeStr(typeStr)
+				//log.Printf("processedTypeStr: %s, importPath: %s", processedTypeStr, importPath)
+
+				if importPath != "" && !importExists(importPath, f.imports) {
+
+					f.imports = append(f.imports, Import{importPath})
+
 				}
 
 				v := Field{
 					name:     field.Name,
-					typeName: typeStr,
+					typeName: processedTypeStr,
 				}
 				f.fields = append(f.fields, v)
 			}
@@ -410,6 +406,23 @@ func (f *File) genDecl(node ast.Node) bool {
 
 type PropertizerTags struct {
 	Private bool
+}
+
+func processTypeStr(typeStr string) (typeName, importPath string) {
+	if strings.Contains(typeStr, "/") {
+		slashSplit := strings.Split(typeStr, "/")
+		pkgNameAndType := slashSplit[len(slashSplit)-1]
+		pkgName := strings.Split(pkgNameAndType, ".")[0]
+		importPath := fmt.Sprintf("%s/%s", strings.Join(slashSplit[0:len(slashSplit)-1], "/"), pkgName)
+		return pkgNameAndType, importPath
+	} else if strings.Contains(typeStr, ".") {
+		dotSplit := strings.Split(typeStr, ".")
+		importPath := dotSplit[0]
+		pkgNameAndType := typeStr
+		return pkgNameAndType, importPath
+	} else {
+		return typeStr, ""
+	}
 }
 
 func findPropertizerTag(tagString *ast.BasicLit) PropertizerTags {
@@ -433,14 +446,6 @@ func findPropertizerTag(tagString *ast.BasicLit) PropertizerTags {
 	return PropertizerTags{Private: false}
 }
 
-func matchImport(objectImportId string, importSpec *ast.ImportSpec) bool {
-	noquotes := strings.Replace(importSpec.Path.Value, "\"", "", -1)
-	var lastPathID = noquotes
-	if strings.Contains(noquotes, "/") {
-		lastPathID = strings.Split(noquotes, "/")[0]
-	}
-	return objectImportId == lastPathID
-}
 func importExists(pathName string, imports []Import) bool {
 	for _, val := range imports {
 		if pathName == val.ImportedName {
