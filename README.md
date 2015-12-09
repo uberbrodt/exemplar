@@ -66,3 +66,10 @@ running `go generate` inside of the package that contains this struct will autom
 ####Private fields
 
 You can mark a field as private (ie. Don't generate getters or setters) with the `propertizer:"private"` struct tag.
+
+####Getter Prefix
+Adding the flag `--getterPrefix` will preface the accessors with "Get". This is necessary where you have a struct that is also being used for JSON marshaling, and you need your field names to remain public. Go will throw an error when a method has the same name as a field ie. obj.ID() and obj.ID
+
+##TODO
+* Handle _ and aliased imports
+* Auto generate tests for structs? We already compile the package after running, so really only useful if you're worried about code coverage metrics
