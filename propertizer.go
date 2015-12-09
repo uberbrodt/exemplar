@@ -34,6 +34,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"golang.org/x/tools/go/types"
@@ -230,7 +231,8 @@ func (pkg *Package) check(fs *token.FileSet, astFiles []*ast.File) {
 		if cErr.Soft {
 			return
 		}
-		if strings.Contains(cErr.Msg, "has no field or method") {
+		if strings.Contains(cErr.Msg, "has no field or method") ||
+			strings.Contains(cErr.Msg, "invalid operation: cannot call non-function") {
 			log.Printf("IGNORED: during package check: %s", cErr.Msg)
 			return
 		}
@@ -277,14 +279,32 @@ func (g *Generator) generate(typeName string) {
 	}
 }
 func (g *Generator) buildAccessor(f Field, typeName string) {
-	g.Printf("func (this *%s) Get%s() %s {\n", typeName, f.name,
+	//Make Id ID per Go std, upper case private fields
+	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
+	g.Printf("func (this *%s) %s() %s {\n", typeName, tempStr,
 		f.typeName)
 	g.Printf("  return this.%s \n", f.name)
 	g.Printf("}\n")
-
 }
+
 func (g *Generator) buildMutator(f Field, typeName string) {
-	//TODO: Implement
+	tempStr := strings.Replace(strings.Title(CamelCase(f.name)), "Id", "ID", -1)
+	g.Printf("func (this *%s) Set%s(x %s) {\n", typeName, tempStr, f.typeName)
+	g.Printf("  this.%s = x \n", f.name)
+	g.Printf("}\n")
+}
+
+var camelingRegex = regexp.MustCompile("[0-9A-Za-z]+")
+
+func CamelCase(src string) string {
+	byteSrc := []byte(src)
+	chunks := camelingRegex.FindAll(byteSrc, -1)
+	for idx, val := range chunks {
+		if idx > 0 {
+			chunks[idx] = bytes.Title(val)
+		}
+	}
+	return string(bytes.Join(chunks, nil))
 }
 
 // format returns the gofmt-ed contents of the Generator's buffer.
@@ -355,6 +375,7 @@ func (f *File) genDecl(node ast.Node) bool {
 				if field.Name == "_" {
 					continue
 				}
+				//TODO: Skip fields with propertizer: private tag
 				fieldObj, _, _ := types.LookupFieldOrMethod(typesObj.Type(), false, f.pkg.typesPkg, field.Name)
 
 				typeStr := fieldObj.Type().String()
@@ -382,8 +403,12 @@ func (f *File) genDecl(node ast.Node) bool {
 }
 
 func matchImport(objectImportId string, importSpec *ast.ImportSpec) bool {
-	//TODO: Handle nested packages
-	return objectImportId == strings.Replace(importSpec.Path.Value, "\"", "", -1)
+	noquotes := strings.Replace(importSpec.Path.Value, "\"", "", -1)
+	var lastPathID = noquotes
+	if strings.Contains(noquotes, "/") {
+		lastPathID = strings.Split(noquotes, "/")[0]
+	}
+	return objectImportId == lastPathID
 }
 func importExists(pathName string, imports []Import) bool {
 	for _, val := range imports {
