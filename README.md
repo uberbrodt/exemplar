@@ -1,17 +1,30 @@
-#Propertizer: Generate mutators and accessors for Go struct types.
+#Exemplar: A Go Code Generator
 
-Basically a rip off of [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer), but generates you Getters and Setters for structs.
+Exempler is a code generator for Go based off of [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer). It parses the target package, generates code based off provided struct(s) and then verfies that the package still works. It even runs `gofmt` afterwards so that your generated code is pretty!
+
+Originally, this project was called Propertizer, and generated accessors and mutators for structs, but I realized that what I really needed was a way to generate DAO and RESTful resource-like code, becuase it's tedious to create and update. So I added in the nice [Cobrat](https://github.com/spf13/cobra) CLI tool and made Propertizer a sub command. The plan is to add two more commands:
+
+* `model` will generate DAO like code for a struct using [sqlx](https://github.com/jmoiron/sqlx). Support will expand eventually to support raw database/sql and other datastores as needed.
+*  `resource` will generate a set of REST methods and muxer routes (GET /foo/:id, PUT /foo/:id, etc) for a struct. The aim will be to make it solely standard library, but might support either [negroni](https://github.com/codegangsta/negroni) or [gin](https://github.com/gin-gonic/gin) out of the box
+
+##Commands
+
+###Propertizer: Generate mutators and accessors for Go struct types.
+
+Generates you Getters and Setters for structs. Can ignore fields and generate interfaces for the getters and setters as well
 
 ###Hold on, why do I need this? This isn't Java?!
-Good point! But like Java, Go is statically typed. If you want to write tests, you'll probably need interfaces. You can't specify fields as part of an interface, so that means you'll need methods.
+Well, you generally don't. For some reason I thought I needed this, but upon further review I didn't :(
+
+Oh well, at least I learned a lot and now I'll put that knowledge to use to create something useful.
 
 ###How to use
 
-`go get install github.com/uberbrodt/propertizer`
+`go get install github.com/uberbrodt/exemplar`
 
-Pick a type and point it towards the relevant filed
+Pick a type and point it towards the relevant file
 
-`propertizer -type YourStruct /github.com/your/package/yourstruct.go`
+`exemplar propertizer -type YourStruct /github.com/your/package/yourstruct.go`
 
 And it'll generate you a file called `yourstruct_propertizer.go`
 
@@ -70,6 +83,10 @@ You can mark a field as private (ie. Don't generate getters or setters) with the
 ####Getter Prefix
 Adding the flag `--getterPrefix` will preface the accessors with "Get". This is necessary where you have a struct that is also being used for JSON marshaling, and you need your field names to remain public. Go will throw an error when a method has the same name as a field ie. obj.ID() and obj.ID
 
-##TODO
+####TODO
 * Handle _ and aliased imports
 * Auto generate tests for structs? We already compile the package after running, so really only useful if you're worried about code coverage metrics
+
+- - -
+###Model: Generate DAO's for structs
+Coming soon!
