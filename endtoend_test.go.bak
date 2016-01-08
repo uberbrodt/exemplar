@@ -1,5 +1,6 @@
-package main
+//package exemplar
 
+/*
 import (
 	"fmt"
 	"go/build"
@@ -94,3 +95,4 @@ func run(name string, arg ...string) error {
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
+*/
