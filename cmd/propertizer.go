@@ -17,7 +17,6 @@ package cmd
 import (
 	"bytes"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 
@@ -39,10 +38,7 @@ var propertizerCmd = &cobra.Command{
 		// TODO: Work your own magic here
 		g := new(parse.Generator)
 
-		path := os.Args[1]
-		if path == "" {
-			path = "."
-		}
+		path := cmd.Flags().Args()
 
 		propertizer := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
