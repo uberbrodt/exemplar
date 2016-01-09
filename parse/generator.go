@@ -18,6 +18,8 @@ import (
 	"golang.org/x/tools/go/types"
 )
 
+//The caller will send a function of this type to do all the actual
+//modification of the target package
 type GeneratorFunc func(typeName string, fields []Field, imports []Import)
 
 // File holds a single parsed file and associated data.
@@ -62,6 +64,10 @@ type Generator struct {
 	dir string
 }
 
+//Run parses the target package and generates the code, verifying the package before and after generation.
+//pathArgs is a list of file paths, to either individual files or whole directories.
+//typeName is the name of a struct we're working on. outputName is where the generated code should go.
+//genFn is the most important part, and recieves all the meta info about the targeted Type
 func (g *Generator) Run(pathArgs []string, typeName string, outputName string, genFn GeneratorFunc) error {
 	//Parse the package
 	g.Prepare(pathArgs)
@@ -78,6 +84,7 @@ func (g *Generator) Run(pathArgs []string, typeName string, outputName string, g
 	src := g.format()
 
 	// Write to file.
+	//TODO: Fix this to not be tied to propertizer
 	if outputName == "" {
 		baseName := fmt.Sprintf("%s_properties.go", typeName)
 		outputName = filepath.Join(g.dir, strings.ToLower(baseName))
@@ -90,12 +97,10 @@ func (g *Generator) Run(pathArgs []string, typeName string, outputName string, g
 }
 
 func (g *Generator) Prepare(args []string) {
-
 	if len(args) == 1 && isDirectory(args[0]) {
 		g.dir = args[0]
 		g.parsePackageDir(args[0])
 	} else {
-		//TODO: path was an args array from main, so figure out how to handle that
 		g.dir = filepath.Dir(args[0])
 		g.parsePackageFiles(args)
 	}
@@ -121,8 +126,6 @@ func (g *Generator) collectAndGenerate(typeName string, genFn GeneratorFunc) {
 
 }
 
-//TODO: Make sure this collects all necessary info to generate things
-//about a struct, in a generic way. ie. Remove propertizer specific things
 // genDecl processes one declaration clause.
 func (f *File) genDecl(node ast.Node) bool {
 	decl, ok := node.(*ast.GenDecl)
@@ -170,14 +173,6 @@ func (f *File) genDecl(node ast.Node) bool {
 
 				typeStr := fieldObj.Type().String()
 				tags := parseFieldTags(fieldLine.Tag)
-				//tags := findPropertizerTag(fieldLine.Tag)
-
-				//XXX: This is propertizer specific
-				//if tags.Private {
-				//	log.Printf("Skipping field %s because it's marked private",
-				//		field.Name)
-				//	continue
-				//}
 
 				processedTypeStr, importPath := processTypeStr(typeStr)
 				//log.Printf("processedTypeStr: %s, importPath: %s", processedTypeStr, importPath)
@@ -298,7 +293,7 @@ func (g *Generator) Printf(format string, args ...interface{}) {
 	fmt.Fprintf(&g.buf, format, args...)
 }
 
-// format returns the gofmt-ed contents of the Generator's buffer.
+//format returns the gofmt-ed contents of the Generator's buffer.
 func (g *Generator) format() []byte {
 	src, err := format.Source(g.buf.Bytes())
 	if err != nil {
@@ -330,9 +325,6 @@ func (pkg *Package) check(fs *token.FileSet, astFiles []*ast.File) {
 		Defs: pkg.defs,
 	}
 	typesPkg, _ := config.Check(pkg.dir, fs, astFiles, info)
-	//if err != nil {
-	//log.Fatalf("checking package: %s", err)
-	//	}
 	pkg.typesPkg = typesPkg
 }
 

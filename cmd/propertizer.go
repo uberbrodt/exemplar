@@ -29,13 +29,31 @@ var outputFlag string
 var getterPrefixFlag bool
 var interfaceNameFlag string
 
+func init() {
+	RootCmd.AddCommand(propertizerCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// propertizerCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	propertizerCmd.Flags().StringVarP(&typeFlag, "type", "t", "", "comma-separated list of type names; must be set")
+	propertizerCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "output file name; default srcdir/<stype>_properties.go")
+	propertizerCmd.Flags().BoolVar(&getterPrefixFlag, "getterPrefix", false, "Prefix the accessor methods with Get")
+	propertizerCmd.Flags().StringVar(&interfaceNameFlag, "interfaceName", "", "If set, creates an interface with the name provided for the struct methods")
+
+}
+
 // propertizerCmd represents the propertizer command
 var propertizerCmd = &cobra.Command{
 	Use:   "propertizer",
 	Short: "Create getters and setters for a struct",
-	Long:  `Generate getters setters and interfaces for a struct`,
+	Long: `Generate getters, setters and interfaces for a struct
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
 		g := new(parse.Generator)
 
 		path := cmd.Flags().Args()
@@ -63,6 +81,7 @@ var propertizerCmd = &cobra.Command{
 				g.Printf("\n")
 				g.Printf("type %s interface {\n", interfaceNameFlag)
 				for _, field := range fields {
+					propertizerTag := field.Tags["propertizer"]
 					if propertizerTag.Values == nil {
 						buildInterfaceAccessor(g, field, typeName)
 						buildInterfaceMutator(g, field, typeName)
@@ -125,21 +144,4 @@ func CamelCase(src string) string {
 		}
 	}
 	return string(bytes.Join(chunks, nil))
-}
-func init() {
-	RootCmd.AddCommand(propertizerCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// propertizerCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	propertizerCmd.Flags().StringVarP(&typeFlag, "type", "t", "", "comma-separated list of type names; must be set")
-	propertizerCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "output file name; default srcdir/<stype>_properties.go")
-	propertizerCmd.Flags().BoolVar(&getterPrefixFlag, "getterPrefix", false, "Prefix the accessor methods with Get")
-	propertizerCmd.Flags().StringVar(&interfaceNameFlag, "interfaceName", "", "If set, creates an interface with the name provided for the struct methods")
-
 }
