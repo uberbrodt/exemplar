@@ -24,8 +24,6 @@ import (
 	"github.com/uberbrodt/exemplar/parse"
 )
 
-var typeFlag string
-var outputFlag string
 var getterPrefixFlag bool
 var interfaceNameFlag string
 
@@ -40,8 +38,6 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	propertizerCmd.Flags().StringVarP(&typeFlag, "type", "t", "", "comma-separated list of type names; must be set")
-	propertizerCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "output file name; default srcdir/<stype>_properties.go")
 	propertizerCmd.Flags().BoolVar(&getterPrefixFlag, "getterPrefix", false, "Prefix the accessor methods with Get")
 	propertizerCmd.Flags().StringVar(&interfaceNameFlag, "interfaceName", "", "If set, creates an interface with the name provided for the struct methods")
 
