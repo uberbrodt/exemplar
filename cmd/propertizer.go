@@ -71,7 +71,7 @@ var propertizerCmd = &cobra.Command{
 
 			for _, field := range fields {
 				propertizerTag := field.Tags["propertizer"]
-				if propertizerTag.Values == nil {
+				if propertizerTag.Value != "private" {
 					buildAccessor(g, field, typeName)
 					buildMutator(g, field, typeName)
 				}
@@ -82,7 +82,7 @@ var propertizerCmd = &cobra.Command{
 				g.Printf("type %s interface {\n", interfaceNameFlag)
 				for _, field := range fields {
 					propertizerTag := field.Tags["propertizer"]
-					if propertizerTag.Values == nil {
+					if propertizerTag.Value != "private" {
 						buildInterfaceAccessor(g, field, typeName)
 						buildInterfaceMutator(g, field, typeName)
 					}

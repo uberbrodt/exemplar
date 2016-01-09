@@ -40,8 +40,8 @@ type Field struct {
 }
 
 type StructTag struct {
-	Name   string
-	Values []string
+	Name  string
+	Value string
 }
 
 type Import struct {
@@ -353,7 +353,7 @@ func parseFieldTags(tagString *ast.BasicLit) map[string]StructTag {
 			}
 			if sanitized[i] == '"' {
 				if inTag {
-					tagMap[key] = StructTag{Name: key, Values: strings.Split(bytes.NewBuffer(buffer).String(), ",")}
+					tagMap[key] = StructTag{Name: key, Value: bytes.NewBuffer(buffer).String()}
 					buffer, key = make([]byte, 0, 10), ""
 					//key = ""
 					inTag = false
