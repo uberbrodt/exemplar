@@ -1,8 +1,9 @@
 package main
 
 import "time"
-import "log"
-import "reflect"
+
+//import "log"
+//import "reflect"
 import "github.com/traitify/common-go/unixtime"
 
 type Basicstruct struct {
