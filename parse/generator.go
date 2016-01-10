@@ -293,6 +293,10 @@ func (g *Generator) Printf(format string, args ...interface{}) {
 	fmt.Fprintf(&g.buf, format, args...)
 }
 
+func (g *Generator) Print(output string) {
+	fmt.Fprint(&g.buf, output)
+}
+
 //format returns the gofmt-ed contents of the Generator's buffer.
 func (g *Generator) format() []byte {
 	src, err := format.Source(g.buf.Bytes())

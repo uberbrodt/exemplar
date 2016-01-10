@@ -28,6 +28,7 @@ var outputFlag string
 
 type OutputBuffer interface {
 	Printf(format string, args ...interface{})
+	Print(output string)
 }
 
 // This represents the base command when called without any subcommands
