@@ -12,8 +12,9 @@ type Basicstruct struct {
 	prevDate     time.Time       `db:"prev_date"`
 	status       string          `db:"status"`
 	hiddenField  string          `db:"hidden_field"`
-	privateField string          `propertizer:"private"`
-	modifiedAt   unixtime.Millis `db: "modified_at"`
+	privateField string          `db:"private_field" propertizer:"private"`
+	modifiedAt   unixtime.Millis `db:"modified_at"`
+	NeedsInsert  bool
 }
 
 //func main() {
