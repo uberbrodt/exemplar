@@ -100,7 +100,7 @@ func generateFindByMethods(g OutputBuffer, daoObjectName string, tableName strin
 		}
 		g.Printf("\n ")
 		g.Printf("func (store *%s) FindBy%s(p %s) (*%s, error) {\n", daoObjectName,
-			field.Name, field.TypeName, structTypeName)
+			funcCase(field.Name), field.TypeName, structTypeName)
 		g.Printf(" var x %s\n", structTypeName)
 		g.Printf(" sql := \"SELECT * FROM %s WHERE %s = ? LIMIT 1\"\n", tableName, field.Tags["db"].Value)
 		g.Printf(" err := store.DB.QueryRowx(sql, p).StructScan(&x)\n")
@@ -118,7 +118,7 @@ func generateFindByTxMethods(g OutputBuffer, daoObjectName string, tableName str
 		}
 		g.Printf("\n ")
 		g.Printf("func (store *%s) FindBy%sTx(p %s, tx *sqlx.Tx) (*%s, error) {\n", daoObjectName,
-			field.Name, field.TypeName, structTypeName)
+			funcCase(field.Name), field.TypeName, structTypeName)
 		g.Printf(" var x %s\n", structTypeName)
 		g.Printf(" sql := \"SELECT * FROM %s WHERE %s = ? LIMIT 1\"\n", tableName, field.Tags["db"].Value)
 		g.Printf(" err := tx.QueryRowx(sql, p).StructScan(&x)\n")
@@ -136,7 +136,7 @@ func generateFindSliceByMethods(g OutputBuffer, daoObjectName string, tableName 
 		}
 		g.Printf("\n")
 		g.Printf("func (store *%s) FindSliceBy%s(p %s, orderBy interface{}, limit int, offset int) ([]*%s, error) {\n",
-			daoObjectName, field.Name, field.TypeName, structTypeName)
+			daoObjectName, funcCase(field.Name), field.TypeName, structTypeName)
 		g.Printf("x := make([]*%s, 0)\n", structTypeName)
 		g.Printf("sql := \"SELECT * FROM %s WHERE %s = ? \"\n", tableName, field.Tags["db"].Value)
 		g.Printf(" if orderBy != \"\" { \n")
@@ -150,6 +150,7 @@ func generateFindSliceByMethods(g OutputBuffer, daoObjectName string, tableName 
 		g.Printf("}\n")
 		g.Printf("rows, err := store.DB.Queryx(sql, p)\n")
 		g.Printf("if err != nil { return x, err }\n")
+		g.Printf("defer rows.Close()\n")
 		g.Printf("for rows.Next() {\n")
 		g.Printf("i := new(%s)\n", structTypeName)
 		g.Printf("scanErr := rows.StructScan(i)\n")
@@ -173,7 +174,7 @@ func generateFindSliceByTxMethods(g OutputBuffer, daoObjectName string, tableNam
 		}
 		g.Printf("\n")
 		g.Printf("func (store *%s) FindSliceBy%sTx(p %s, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*%s, error) {\n",
-			daoObjectName, field.Name, field.TypeName, structTypeName)
+			daoObjectName, funcCase(field.Name), field.TypeName, structTypeName)
 		g.Printf("x := make([]*%s, 0)\n", structTypeName)
 		g.Printf("sql := \"SELECT * FROM %s WHERE %s = ? \"\n", tableName, field.Tags["db"].Value)
 		g.Printf(" if orderBy != \"\" { \n")
@@ -187,6 +188,7 @@ func generateFindSliceByTxMethods(g OutputBuffer, daoObjectName string, tableNam
 		g.Printf("}\n")
 		g.Printf("rows, err := tx.Queryx(sql, p)\n")
 		g.Printf("if err != nil { return x, err }\n")
+		g.Printf("defer rows.Close()\n")
 		g.Printf("for rows.Next() {\n")
 		g.Printf("i := new(%s)\n", structTypeName)
 		g.Printf("scanErr := rows.StructScan(i)\n")
@@ -227,7 +229,6 @@ func generateSaveMethods(g OutputBuffer, daoObjectName string, tableName string,
 		if f.Name == "NeedsInsert" {
 			continue
 		}
-		fmt.Println(f.Name)
 		dbTag := f.Tags["db"].Value
 		insertSQL += fmt.Sprintf("%s,", dbTag)
 		insertSQLVals += fmt.Sprintf(":%s,", dbTag)
@@ -272,4 +273,8 @@ func updateMethods(g OutputBuffer, sql, daoObjectName, structTypeName string) {
 	g.Printf("_, err := tx.NamedExec(\"%s\", o)\n", sql)
 	g.Printf("return err\n")
 	g.Printf("}\n")
+}
+
+func funcCase(f string) string {
+	return strings.Replace(strings.Title(CamelCase(f)), "Id", "ID", -1)
 }
