@@ -74,6 +74,13 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				g.Printf("import \"%s\" \n", imprt.ImportedName)
 			}
 
+			for idx, field := range fields {
+				if field.Tags["exclude_dao"].Value == "true" {
+					copy(fields[idx:], fields[idx+2:])
+					fields = fields[:len(fields)-1]
+				}
+			}
+
 			//generate the struct we need
 			g.Printf("type %s struct { DB  model.ExemplarSqlx }\n", storeNameFlag)
 			generateFindByMethods(g, storeNameFlag, tableNameFlag, typeName, fields)

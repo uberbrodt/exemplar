@@ -10,9 +10,9 @@ type Basicstruct struct {
 	id           int             `db:"id"`
 	date         time.Time       `db:"date"`
 	prevDate     time.Time       `db:"prev_date"`
-	status       string          `db:"status"`
+	status       string          `db:"status" whatever:"foo"`
 	hiddenField  string          `db:"hidden_field"`
-	privateField string          `db:"private_field" propertizer:"private"`
+	privateField string          `db:"private_field" propertizer:"private" exclude_dao:"true"`
 	modifiedAt   unixtime.Millis `db:"modified_at"`
 	NeedsInsert  bool
 }

@@ -343,6 +343,7 @@ func isDirectory(name string) bool {
 
 func parseFieldTags(tagString *ast.BasicLit) map[string]StructTag {
 	tagMap := make(map[string]StructTag)
+
 	if tagString != nil {
 		sanitized := strings.Replace(tagString.Value, "`", "", -1)
 
@@ -351,13 +352,13 @@ func parseFieldTags(tagString *ast.BasicLit) map[string]StructTag {
 		var inTag bool
 		for i := 0; i < len(sanitized); i++ {
 			if sanitized[i] == ':' {
-				key = bytes.NewBuffer(buffer).String()
+				key = strings.TrimSpace(bytes.NewBuffer(buffer).String())
 				buffer = make([]byte, 0, 10)
 				continue
 			}
 			if sanitized[i] == '"' {
 				if inTag {
-					tagMap[key] = StructTag{Name: key, Value: bytes.NewBuffer(buffer).String()}
+					tagMap[key] = StructTag{Name: key, Value: strings.TrimSpace(bytes.NewBuffer(buffer).String())}
 					buffer, key = make([]byte, 0, 10), ""
 					//key = ""
 					inTag = false
