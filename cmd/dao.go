@@ -221,10 +221,10 @@ func generateSaveMethods(g OutputBuffer, daoObjectName string, tableName string,
 	g.Printf("return store.updateTx(o, tx) }\n")
 	g.Printf("}\n")
 
-	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
+	insertSQL := fmt.Sprintf("INSERT INTO %s ( ", tableName)
 	insertSQLVals := "VALUES("
-	updateSQL := fmt.Sprintf("UPDATE %s SET", tableName)
-	updateWhereSQL := fmt.Sprintf("WHERE id = :id")
+	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
+	updateWhereSQL := fmt.Sprintf(" WHERE id = :id")
 
 	for _, f := range fields {
 		if f.Name == "NeedsInsert" {
