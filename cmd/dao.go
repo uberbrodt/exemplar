@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/serenize/snaker"
 	"github.com/spf13/cobra"
 	"github.com/uberbrodt/exemplar/parse"
 )
@@ -84,7 +85,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		}
 
 		if outputFlag == "" {
-			outputFlag = filepath.Join(args[0], strings.ToLower(fmt.Sprintf("%s_dao.go", storeNameFlag)))
+			outputFlag = filepath.Join(args[0], strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
 		}
 
 		g.Run(path, typeFlag, outputFlag, propertizer)
