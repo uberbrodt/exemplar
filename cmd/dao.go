@@ -39,7 +39,7 @@ func init() {
 
 // modelCmd represents the model command
 var modelCmd = &cobra.Command{
-	Use:   "model",
+	Use:   "dao",
 	Short: "Generate a DB backed Store type for a provided struct",
 	Long: `This command will generate more-or-less a DAO for a given struct. For Example given the following struct:
 
@@ -48,7 +48,7 @@ type Foo struct {
 	Bar string "db: bar"
 }
 
-model will generate:
+dao will generate:
 
 type FooStorePg struct {
 }
