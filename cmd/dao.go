@@ -84,7 +84,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		}
 
 		if outputFlag == "" {
-			outputFlag = filepath.Join(args[0], strings.ToLower(fmt.Sprintf("%s_model.go", typeFlag)))
+			outputFlag = filepath.Join(args[0], strings.ToLower(fmt.Sprintf("%s_dao.go", storeNameFlag)))
 		}
 
 		g.Run(path, typeFlag, outputFlag, propertizer)
