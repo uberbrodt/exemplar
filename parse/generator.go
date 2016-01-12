@@ -319,7 +319,9 @@ func (pkg *Package) check(fs *token.FileSet, astFiles []*ast.File) {
 			return
 		}
 		if strings.Contains(cErr.Msg, "has no field or method") ||
-			strings.Contains(cErr.Msg, "invalid operation: cannot call non-function") {
+			strings.Contains(cErr.Msg, "invalid operation: cannot call non-function") ||
+			//2016-01-11: Try and skip past issues with VendorExperiment
+			strings.Contains(cErr.Msg, "vendor") {
 			log.Printf("IGNORED: during package check: %s", cErr.Msg)
 			return
 		}
