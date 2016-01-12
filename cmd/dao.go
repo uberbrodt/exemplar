@@ -76,7 +76,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 
 			for idx, field := range fields {
 				if field.Tags["exclude_dao"].Value == "true" {
-					copy(fields[idx:], fields[idx+2:])
+					copy(fields[idx:], fields[idx+1:])
 					fields = fields[:len(fields)-1]
 				}
 			}

@@ -174,6 +174,10 @@ func (f *File) genDecl(node ast.Node) bool {
 				typeStr := fieldObj.Type().String()
 				tags := parseFieldTags(fieldLine.Tag)
 
+				//Skip here so we don't include rubbish import lines
+				if tags["exclude_dao"].Value == "true" {
+					continue
+				}
 				processedTypeStr, importPath := processTypeStr(typeStr)
 				//log.Printf("processedTypeStr: %s, importPath: %s", processedTypeStr, importPath)
 
