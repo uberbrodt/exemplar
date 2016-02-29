@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate go-bindata -pkg data -o data/templates.go templates/dao
 package main
 
 import "github.com/uberbrodt/exemplar/cmd"

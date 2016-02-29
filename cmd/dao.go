@@ -22,6 +22,7 @@ import (
 
 	"github.com/serenize/snaker"
 	"github.com/spf13/cobra"
+	"github.com/uberbrodt/exemplar/data"
 	"github.com/uberbrodt/exemplar/parse"
 )
 
@@ -67,7 +68,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
 		}
 
-		dao := func(typeName string, fields []parse.Field, imports []parse.Import) {
+		action := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
 			funcMap := template.FuncMap{
 				"funcCase":  funcCase,
@@ -75,7 +76,13 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				"insertSQL": insertSQLFunc,
 			}
 
-			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).ParseFiles("templates/dao/generic.tmpl"))
+			templateData, templateErr := data.Asset("templates/dao/generic.tmpl")
+			if templateErr != nil {
+				panic("dao template not loaded! bin-data err?")
+			}
+			tmplString := string(templateData)
+			fmt.Print(tmplString)
+			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).Parse(tmplString))
 
 			for idx, field := range fields {
 				if field.Tags["exclude_dao"].Value == "true" || field.Name == "NeedsInsert" {
@@ -84,7 +91,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				}
 			}
 
-			tmpl.ExecuteTemplate(&g.Buf, "generic.tmpl",
+			tmpl.ExecuteTemplate(&g.Buf, "generic_tmpl",
 				struct {
 					Imports        []parse.Import
 					Fields         []parse.Field
@@ -104,7 +111,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			outputFlag = filepath.Join(strings.Replace(args[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
 		}
 
-		g.Run(path, typeFlag, outputFlag, dao)
+		g.Run(path, typeFlag, outputFlag, action)
 	},
 }
 
