@@ -27,15 +27,17 @@ import (
 )
 
 var storeNameFlag string
-var dbtypeFlag string
+var templateFlag string
 var tableNameFlag string
+var tplLocFlag string
 
 func init() {
 	RootCmd.AddCommand(modelCmd)
 
 	// Here you will define your flags and configuration settings.
-	modelCmd.Flags().StringVarP(&storeNameFlag, "storename", "s", "", "name of the type that will be the store")
-	modelCmd.Flags().StringVarP(&dbtypeFlag, "dbtype", "d", "pg", "Currently supports only pg, though shouldn't matter much b/c sqlx ")
+	modelCmd.Flags().StringVarP(&storeNameFlag, "daoName", "s", "", "name of the type to generate")
+	modelCmd.Flags().StringVarP(&templateFlag, "tpl", "", "dao/sqlx", "Specify template to generate DAO's from")
+	modelCmd.Flags().StringVarP(&tplLocFlag, "tplFolder", "f", "./exemplar", "Specify location of custom template files. If unset, will look for builtin's or ./exemplar")
 	modelCmd.Flags().StringVarP(&tableNameFlag, "tableName", "", "", "The name of the db table associated with struct")
 
 }
@@ -43,7 +45,7 @@ func init() {
 // modelCmd represents the model command
 var modelCmd = &cobra.Command{
 	Use:   "dao",
-	Short: "Generate a DB backed Store type for a provided struct",
+	Short: "Generate a Data Access Object, encapsulating populating and persisting a struct to a DB",
 	Long: `This command will generate more-or-less a DAO for a given struct. For Example given the following struct:
 
 type Foo struct {
@@ -68,6 +70,12 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
 		}
 
+		if templateFlag == "" {
+			templateFlag = "dao/sqlx"
+		}
+
+		templateFlag = fmt.Sprintf("templates/%s.tmpl", templateFlag)
+
 		action := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
 			funcMap := template.FuncMap{
@@ -76,13 +84,13 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				"insertSQL": insertSQLFunc,
 			}
 
-			templateData, templateErr := data.Asset("templates/dao/generic.tmpl")
+			templateData, templateErr := data.Asset(templateFlag)
 			if templateErr != nil {
-				panic("dao template not loaded! bin-data err?")
+				panic(fmt.Sprintf("dao template not loaded! bin-data err? %s", templateErr))
 			}
 			tmplString := string(templateData)
 			//DEBUG: fmt.Print(tmplString)
-			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).Parse(tmplString))
+			tmpl := template.Must(template.New("dao_tmpl").Funcs(funcMap).Parse(tmplString))
 
 			filtered := make([]parse.Field, 0)
 			for _, field := range fields {
@@ -90,7 +98,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 					filtered = append(filtered, field)
 				}
 			}
-			tmpl.ExecuteTemplate(&g.Buf, "generic_tmpl",
+			tmpl.ExecuteTemplate(&g.Buf, "dao_tmpl",
 				struct {
 					Imports        []parse.Import
 					Fields         []parse.Field

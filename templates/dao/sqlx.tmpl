@@ -1,0 +1,128 @@
+import "github.com/jmoiron/sqlx"
+import "github.com/uberbrodt/exemplar/model"
+import "fmt"
+
+{{range $import := .Imports}}
+import "{{$import.ImportedName}}"
+{{end}}
+
+type {{.DAOName}} struct { DB model.ExemplarSqlx }
+
+{{range $field := .Fields}}
+func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
+    var x {{$.StructTypeName}}
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
+    err := store.DB.QueryRowx(sql, p).StructScan(&x) 
+    return &x, err
+}
+
+func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
+    var x {{$.StructTypeName}} 
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
+    
+    err := tx.QueryRowx(sql, p).StructScan(&x)
+    return &x, err
+}
+
+func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.TypeName}}, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
+    x := make([]*{{$.StructTypeName}}, 0)
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
+    if orderBy != "" {
+        sql += fmt.Sprintf("ORDER BY %s ", orderBy)
+    }
+
+    if limit > 0 {
+        sql += fmt.Sprintf("LIMIT %d ", limit)
+    }
+
+    if offset > 0 {
+        sql += fmt.Sprintf("OFFSET %d", offset)
+    }
+    rows, err := store.DB.Queryx(sql, p)
+    if err != nil { return x, err }
+    defer rows.Close()
+    for rows.Next() {
+        i := new({{$.StructTypeName}})
+        scanErr := rows.StructScan(i)
+        if scanErr != nil { return x,scanErr }
+        x = append(x, i)
+    }
+    return x, nil
+}
+
+func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
+    x := make([]*{{$.StructTypeName}}, 0)
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
+    if orderBy != "" {
+        sql += fmt.Sprintf("ORDER BY %s ", orderBy)
+    }
+
+    if limit > 0 {
+        sql += fmt.Sprintf("LIMIT %d ", limit)
+    }
+
+    if offset > 0 {
+        sql += fmt.Sprintf("OFFSET %d", offset)
+    }
+    rows, err := tx.Queryx(sql, p)
+    if err != nil { return x, err }
+    defer rows.Close()
+    for rows.Next() {
+        i := new({{$.StructTypeName}})
+        scanErr := rows.StructScan(i)
+        if scanErr != nil { return x,scanErr }
+        x = append(x, i)
+    }
+    return x, nil
+}
+{{end}}
+
+func (store *{{.DAOName}}) Save(o *{{.StructTypeName}}) error {
+    if o.NeedsInsert {
+        return store.insert(o)
+    } else {
+        return store.update(o) 
+    }
+}
+
+func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+    if o.NeedsInsert {
+        return store.insertTx(o, tx)
+    } else {
+        return store.updateTx(o, tx) 
+    }
+}
+
+func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
+    
+    sql := "{{insertSQL .Fields .TableName}}"
+    _, err := store.DB.NamedExec(sql, o)
+    if err == nil {
+       o.NeedsInsert = false
+    }
+    return err
+}
+
+func (store *{{.DAOName}}) update(o *{{.StructTypeName}}) error {
+
+    sql := "{{updateSQL .Fields .TableName}}"
+    _, err := store.DB.NamedExec(sql, o)
+    return err
+}
+
+func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+    
+    sql := "{{insertSQL .Fields .TableName}}"
+    _, err := tx.NamedExec(sql, o)
+    if err == nil {
+       o.NeedsInsert = false
+    }
+    return err
+}
+
+func (store *{{.DAOName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+
+    sql := "{{updateSQL .Fields .TableName}}"
+    _, err := tx.NamedExec(sql, o)
+    return err
+}

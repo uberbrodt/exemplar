@@ -61,7 +61,7 @@ func init() {
 	// will be global for your application.
 
 	RootCmd.PersistentFlags().StringVarP(&typeFlag, "type", "t", "", "struct type that we're generating code for")
-	RootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "output file name; default srcdir/<stype>_properties.go")
+	RootCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "output file name; default srcdir/<stype>_<cmd>.go")
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.exemplar.yaml)")
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
