@@ -93,4 +93,36 @@ func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     }
 }
 
+func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
+    
+    sql := "{{insertSQL .Fields .TableName}}"
+    _, err := store.DB.NamedExec(sql, o)
+    if err == nil {
+       o.NeedsInsert = false
+    }
+    return err
+}
 
+func (store *{{.DAOName}}) update(o *{{.StructTypeName}}) error {
+
+    sql := "{{updateSQL .Fields .TableName}}"
+    _, err := store.DB.NamedExec(sql, o)
+    return err
+}
+
+func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+    
+    sql := "{{insertSQL .Fields .TableName}}"
+    _, err := tx.NamedExec(sql, o)
+    if err == nil {
+       o.NeedsInsert = false
+    }
+    return err
+}
+
+func (store *{{.DAOName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+
+    sql := "{{updateSQL .Fields .TableName}}"
+    _, err := tx.NamedExec(sql, o)
+    return err
+}

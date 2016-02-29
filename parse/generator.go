@@ -305,7 +305,7 @@ func (g *Generator) Print(output string) {
 
 //format returns the gofmt-ed contents of the Generator's buffer.
 func (g *Generator) format() []byte {
-	//DEBUG: fmt.Print(g.buf.String())
+	//DEBUG: fmt.Print(g.Buf.String())
 	src, err := format.Source(g.Buf.Bytes())
 	if err != nil {
 		// Should never happen, but can arise when developing this code.

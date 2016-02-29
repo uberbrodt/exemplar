@@ -67,10 +67,12 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
 		}
 
-		propertizer := func(typeName string, fields []parse.Field, imports []parse.Import) {
+		dao := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
 			funcMap := template.FuncMap{
-				"funcCase": funcCase,
+				"funcCase":  funcCase,
+				"updateSQL": updateSQLFunc,
+				"insertSQL": insertSQLFunc,
 			}
 
 			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).ParseFiles("templates/dao/generic.tmpl"))
@@ -85,7 +87,6 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			tmpl.ExecuteTemplate(&g.Buf, "generic.tmpl",
 				struct {
 					Imports        []parse.Import
-					StoreNameFlag  string
 					Fields         []parse.Field
 					StructTypeName string
 					TableName      string
@@ -97,90 +98,48 @@ func (store *FooStorePg) GetByID(id int) Foo {
 					TableName:      tableNameFlag,
 					DAOName:        storeNameFlag})
 
-			generateSaveMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
-
 		}
 
 		if outputFlag == "" {
 			outputFlag = filepath.Join(strings.Replace(args[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
 		}
 
-		g.Run(path, typeFlag, outputFlag, propertizer)
+		g.Run(path, typeFlag, outputFlag, dao)
 	},
-}
-
-func generateSaveMethods(g OutputBuffer, daoObjectName string, tableName string,
-	structTypeName string, fields []parse.Field) {
-
-	g.Printf("func (store *%s) Save(o *%s) error {\n", daoObjectName, structTypeName)
-	g.Printf("if o.NeedsInsert {\n")
-	g.Printf(" return store.insert(o) \n")
-	g.Printf("} else { \n")
-	g.Printf("return store.update(o) }\n")
-	g.Printf("}\n")
-
-	g.Printf("func (store *%s) SaveTx(o *%s, tx *sqlx.Tx) error {\n", daoObjectName, structTypeName)
-	g.Printf("if o.NeedsInsert {\n")
-	g.Printf(" return store.insertTx(o, tx) \n")
-	g.Printf("} else { \n")
-	g.Printf("return store.updateTx(o, tx) }\n")
-	g.Printf("}\n")
-
-	insertSQL := fmt.Sprintf("INSERT INTO %s ( ", tableName)
-	insertSQLVals := "VALUES("
-	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
-	updateWhereSQL := fmt.Sprintf(" WHERE id = :id")
-
-	for _, f := range fields {
-		if f.Name == "NeedsInsert" {
-			continue
-		}
-		dbTag := f.Tags["db"].Value
-		insertSQL += fmt.Sprintf("%s,", dbTag)
-		insertSQLVals += fmt.Sprintf(":%s,", dbTag)
-		updateSQL += fmt.Sprintf("%s = :%s,", dbTag, dbTag)
-	}
-
-	insertSQL = fmt.Sprintf("%s) %s)", insertSQL, insertSQLVals)
-	updateSQL += updateWhereSQL
-	insertMethods(g, insertSQL, daoObjectName, structTypeName)
-	updateMethods(g, updateSQL, daoObjectName, structTypeName)
-}
-
-func insertMethods(g OutputBuffer, sql, daoObjectName, structTypeName string) {
-	g.Printf("func (store *%s) insert(o *%s)  error {\n",
-		daoObjectName, structTypeName)
-	g.Printf("_, err := store.DB.NamedExec(\"%s\", o)\n", sql)
-	g.Printf("if err == nil {\n")
-	g.Printf("o.NeedsInsert = false\n")
-	g.Printf("}\n")
-	g.Printf("return err\n")
-	g.Printf("}\n")
-
-	g.Printf("func (store *%s) insertTx(o *%s, tx *sqlx.Tx)  error {\n",
-		daoObjectName, structTypeName)
-	g.Printf("_, err := tx.NamedExec(\"%s\", o)\n", sql)
-	g.Printf("if err == nil {\n")
-	g.Printf("o.NeedsInsert = false\n")
-	g.Printf("}\n")
-	g.Printf("return err\n")
-	g.Printf("}\n")
-}
-
-func updateMethods(g OutputBuffer, sql, daoObjectName, structTypeName string) {
-	g.Printf("func (store *%s) update(o *%s)  error {\n",
-		daoObjectName, structTypeName)
-	g.Printf("_, err := store.DB.NamedExec(\"%s\", o)\n", sql)
-	g.Printf("return err\n")
-	g.Printf("}\n")
-
-	g.Printf("func (store *%s) updateTx(o *%s, tx *sqlx.Tx)  error {\n",
-		daoObjectName, structTypeName)
-	g.Printf("_, err := tx.NamedExec(\"%s\", o)\n", sql)
-	g.Printf("return err\n")
-	g.Printf("}\n")
 }
 
 func funcCase(f string) string {
 	return strings.Replace(strings.Title(CamelCase(f)), "Id", "ID", -1)
+}
+
+func insertSQLFunc(fields []parse.Field, tableName string) string {
+	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
+	insertSQLVals := "VALUES ("
+	for i := 0; i < len(fields); i++ {
+		dbTag := fields[i].Tags["db"].Value
+		if i == (len(fields) - 1) {
+			insertSQL += fmt.Sprintf("%s", dbTag)
+			insertSQLVals += fmt.Sprintf(":%s", dbTag)
+		} else {
+			insertSQL += fmt.Sprintf("%s, ", dbTag)
+			insertSQLVals += fmt.Sprintf(":%s, ", dbTag)
+		}
+	}
+
+	return fmt.Sprintf("%s) %s)", insertSQL, insertSQLVals)
+}
+
+func updateSQLFunc(fields []parse.Field, tableName string) string {
+	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
+	updateWhereSQL := fmt.Sprintf(" WHERE id = :id")
+	for i := 0; i < len(fields); i++ {
+		dbTag := fields[i].Tags["db"].Value
+
+		if i == len(fields)-1 {
+			updateSQL += fmt.Sprintf("%s = :%s", dbTag, dbTag)
+		} else {
+			updateSQL += fmt.Sprintf("%s = :%s, ", dbTag, dbTag)
+		}
+	}
+	return updateSQL + updateWhereSQL
 }
