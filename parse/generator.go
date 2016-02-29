@@ -59,7 +59,7 @@ type Package struct {
 // Generator holds the state of the analysis. Primarily used to buffer
 // the output for format.Source.
 type Generator struct {
-	buf bytes.Buffer // Accumulated output.
+	Buf bytes.Buffer // Accumulated output.
 	pkg *Package     // Package we are scanning.
 	dir string
 }
@@ -85,10 +85,12 @@ func (g *Generator) Run(pathArgs []string, typeName string, outputName string, g
 
 	// Write to file.
 	//TODO: Fix this to not be tied to propertizer
+	//DEBUG: fmt.Printf("Typename in parse: %s", typeName)
 	if outputName == "" {
 		baseName := fmt.Sprintf("%s_properties.go", typeName)
 		outputName = filepath.Join(g.dir, strings.ToLower(baseName))
 	}
+	fmt.Println(outputName)
 	err := ioutil.WriteFile(outputName, src, 0644)
 	if err != nil {
 		log.Fatalf("writing output: %s", err)
@@ -294,22 +296,23 @@ func prefixDirectory(directory string, names []string) []string {
 }
 
 func (g *Generator) Printf(format string, args ...interface{}) {
-	fmt.Fprintf(&g.buf, format, args...)
+	fmt.Fprintf(&g.Buf, format, args...)
 }
 
 func (g *Generator) Print(output string) {
-	fmt.Fprint(&g.buf, output)
+	fmt.Fprint(&g.Buf, output)
 }
 
 //format returns the gofmt-ed contents of the Generator's buffer.
 func (g *Generator) format() []byte {
-	src, err := format.Source(g.buf.Bytes())
+	//DEBUG: fmt.Print(g.buf.String())
+	src, err := format.Source(g.Buf.Bytes())
 	if err != nil {
 		// Should never happen, but can arise when developing this code.
 		// The user can compile the output to see the error.
 		log.Printf("warning: internal error: invalid Go generated: %s", err)
 		log.Printf("warning: compile the package to analyze the error")
-		return g.buf.Bytes()
+		return g.Buf.Bytes()
 	}
 	return src
 }

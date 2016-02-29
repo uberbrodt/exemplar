@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/serenize/snaker"
 	"github.com/spf13/cobra"
@@ -62,153 +63,50 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		// TODO: Work your own magic here
 		g := new(parse.Generator)
 		path := cmd.Flags().Args()
+		if storeNameFlag == "" {
+			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
+		}
 
 		propertizer := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
-			g.Printf("import \"github.com/jmoiron/sqlx\"\n")
-			g.Printf("import \"github.com/uberbrodt/exemplar/model\"\n")
-			g.Printf("import \"fmt\"\n") // Used by all methods.
-			//g.Printf("import \"database/sql\"\n")
-
-			for _, imprt := range imports {
-				g.Printf("import \"%s\" \n", imprt.ImportedName)
+			funcMap := template.FuncMap{
+				"funcCase": funcCase,
 			}
 
+			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).ParseFiles("templates/dao/generic.tmpl"))
+
 			for idx, field := range fields {
-				if field.Tags["exclude_dao"].Value == "true" {
+				if field.Tags["exclude_dao"].Value == "true" || field.Name == "NeedsInsert" {
 					copy(fields[idx:], fields[idx+1:])
 					fields = fields[:len(fields)-1]
 				}
 			}
 
-			//generate the struct we need
-			g.Printf("type %s struct { DB  model.ExemplarSqlx }\n", storeNameFlag)
-			generateFindByMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
-			generateFindByTxMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
+			tmpl.ExecuteTemplate(&g.Buf, "generic.tmpl",
+				struct {
+					Imports        []parse.Import
+					StoreNameFlag  string
+					Fields         []parse.Field
+					StructTypeName string
+					TableName      string
+					DAOName        string
+				}{
+					Imports:        imports,
+					Fields:         fields,
+					StructTypeName: typeName,
+					TableName:      tableNameFlag,
+					DAOName:        storeNameFlag})
 
-			generateFindSliceByMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
-			generateFindSliceByTxMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
 			generateSaveMethods(g, storeNameFlag, tableNameFlag, typeName, fields)
+
 		}
 
 		if outputFlag == "" {
-			outputFlag = filepath.Join(args[0], strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
+			outputFlag = filepath.Join(strings.Replace(args[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
 		}
 
 		g.Run(path, typeFlag, outputFlag, propertizer)
 	},
-}
-
-func generateFindByMethods(g OutputBuffer, daoObjectName string, tableName string, structTypeName string,
-	fields []parse.Field) {
-
-	for _, field := range fields {
-		if field.Name == "NeedsInsert" {
-			continue
-		}
-		g.Printf("\n ")
-		g.Printf("func (store *%s) FindBy%s(p %s) (*%s, error) {\n", daoObjectName,
-			funcCase(field.Name), field.TypeName, structTypeName)
-		g.Printf(" var x %s\n", structTypeName)
-		g.Printf(" sql := \"SELECT * FROM %s WHERE %s = ? LIMIT 1\"\n", tableName, field.Tags["db"].Value)
-		g.Printf(" err := store.DB.QueryRowx(sql, p).StructScan(&x)\n")
-		g.Printf(" return &x, err\n")
-		g.Printf("}\n")
-	}
-}
-
-func generateFindByTxMethods(g OutputBuffer, daoObjectName string, tableName string, structTypeName string,
-	fields []parse.Field) {
-
-	for _, field := range fields {
-		if field.Name == "NeedsInsert" {
-			continue
-		}
-		g.Printf("\n ")
-		g.Printf("func (store *%s) FindBy%sTx(p %s, tx *sqlx.Tx) (*%s, error) {\n", daoObjectName,
-			funcCase(field.Name), field.TypeName, structTypeName)
-		g.Printf(" var x %s\n", structTypeName)
-		g.Printf(" sql := \"SELECT * FROM %s WHERE %s = ? LIMIT 1\"\n", tableName, field.Tags["db"].Value)
-		g.Printf(" err := tx.QueryRowx(sql, p).StructScan(&x)\n")
-		g.Printf(" return &x, err\n")
-		g.Printf("}\n")
-	}
-}
-
-func generateFindSliceByMethods(g OutputBuffer, daoObjectName string, tableName string,
-	structTypeName string, fields []parse.Field) {
-
-	for _, field := range fields {
-		if field.Name == "NeedsInsert" {
-			continue
-		}
-		g.Printf("\n")
-		g.Printf("func (store *%s) FindSliceBy%s(p %s, orderBy interface{}, limit int, offset int) ([]*%s, error) {\n",
-			daoObjectName, funcCase(field.Name), field.TypeName, structTypeName)
-		g.Printf("x := make([]*%s, 0)\n", structTypeName)
-		g.Printf("sql := \"SELECT * FROM %s WHERE %s = ? \"\n", tableName, field.Tags["db"].Value)
-		g.Printf(" if orderBy != \"\" { \n")
-		g.Print(`  sql += fmt.Sprintf("ORDER BY %s ", orderBy)`)
-		g.Printf("\n}\n")
-		g.Printf("if limit > 0 { \n")
-		g.Print(` sql += fmt.Sprintf("LIMIT %d", limit)` + "\n")
-		g.Printf("}\n")
-		g.Printf("if offset > 0 {\n")
-		g.Print(` sql += fmt.Sprintf("OFFSET %d", offset)` + "\n")
-		g.Printf("}\n")
-		g.Printf("rows, err := store.DB.Queryx(sql, p)\n")
-		g.Printf("if err != nil { return x, err }\n")
-		g.Printf("defer rows.Close()\n")
-		g.Printf("for rows.Next() {\n")
-		g.Printf("i := new(%s)\n", structTypeName)
-		g.Printf("scanErr := rows.StructScan(i)\n")
-		g.Printf("if scanErr != nil { return x,scanErr }\n ")
-		g.Printf("x = append(x, i)")
-		g.Printf("}\n")
-		g.Printf("return x,nil")
-		g.Printf("}\n")
-
-		//ORDER BY %s LIMIT OFFSET ", )
-
-	}
-
-}
-func generateFindSliceByTxMethods(g OutputBuffer, daoObjectName string, tableName string,
-	structTypeName string, fields []parse.Field) {
-
-	for _, field := range fields {
-		if field.Name == "NeedsInsert" {
-			continue
-		}
-		g.Printf("\n")
-		g.Printf("func (store *%s) FindSliceBy%sTx(p %s, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*%s, error) {\n",
-			daoObjectName, funcCase(field.Name), field.TypeName, structTypeName)
-		g.Printf("x := make([]*%s, 0)\n", structTypeName)
-		g.Printf("sql := \"SELECT * FROM %s WHERE %s = ? \"\n", tableName, field.Tags["db"].Value)
-		g.Printf(" if orderBy != \"\" { \n")
-		g.Print(`  sql += fmt.Sprintf("ORDER BY %s ", orderBy)`)
-		g.Printf("\n}\n")
-		g.Printf("if limit > 0 { \n")
-		g.Print(` sql += fmt.Sprintf("LIMIT %d", limit)` + "\n")
-		g.Printf("}\n")
-		g.Printf("if offset > 0 {\n")
-		g.Print(` sql += fmt.Sprintf("OFFSET %d", offset)` + "\n")
-		g.Printf("}\n")
-		g.Printf("rows, err := tx.Queryx(sql, p)\n")
-		g.Printf("if err != nil { return x, err }\n")
-		g.Printf("defer rows.Close()\n")
-		g.Printf("for rows.Next() {\n")
-		g.Printf("i := new(%s)\n", structTypeName)
-		g.Printf("scanErr := rows.StructScan(i)\n")
-		g.Printf("if scanErr != nil { return x,scanErr }\n ")
-		g.Printf("x = append(x, i)")
-		g.Printf("}\n")
-		g.Printf("return x,nil")
-		g.Printf("}\n")
-
-		//ORDER BY %s LIMIT OFFSET ", )
-
-	}
 }
 
 func generateSaveMethods(g OutputBuffer, daoObjectName string, tableName string,
