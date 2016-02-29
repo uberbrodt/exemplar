@@ -81,7 +81,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				panic("dao template not loaded! bin-data err?")
 			}
 			tmplString := string(templateData)
-			fmt.Print(tmplString)
+			//DEBUG: fmt.Print(tmplString)
 			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).Parse(tmplString))
 
 			for idx, field := range fields {
