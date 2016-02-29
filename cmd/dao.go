@@ -84,13 +84,12 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			//DEBUG: fmt.Print(tmplString)
 			tmpl := template.Must(template.New("generic_tmpl").Funcs(funcMap).Parse(tmplString))
 
-			for idx, field := range fields {
-				if field.Tags["exclude_dao"].Value == "true" || field.Name == "NeedsInsert" {
-					copy(fields[idx:], fields[idx+1:])
-					fields = fields[:len(fields)-1]
+			filtered := make([]parse.Field, 0)
+			for _, field := range fields {
+				if strings.TrimSpace(field.Tags["db"].Value) != "" && field.Tags["exclude_dao"].Value != "true" && field.Name != "NeedsInsert" {
+					filtered = append(filtered, field)
 				}
 			}
-
 			tmpl.ExecuteTemplate(&g.Buf, "generic_tmpl",
 				struct {
 					Imports        []parse.Import
@@ -100,11 +99,10 @@ func (store *FooStorePg) GetByID(id int) Foo {
 					DAOName        string
 				}{
 					Imports:        imports,
-					Fields:         fields,
+					Fields:         filtered,
 					StructTypeName: typeName,
 					TableName:      tableNameFlag,
 					DAOName:        storeNameFlag})
-
 		}
 
 		if outputFlag == "" {
