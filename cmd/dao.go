@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -66,6 +67,13 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		// TODO: Work your own magic here
 		g := new(parse.Generator)
 		path := cmd.Flags().Args()
+		if len(path) == 0 {
+			path = append(path, "./")
+		}
+		if typeFlag == "" {
+			fmt.Println("MISSING REQUIRED ARGUMENT: --type needs to be set")
+			os.Exit(-1)
+		}
 		if storeNameFlag == "" {
 			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
 		}
@@ -116,7 +124,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		}
 
 		if outputFlag == "" {
-			outputFlag = filepath.Join(strings.Replace(args[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
+			outputFlag = filepath.Join(strings.Replace(path[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
 		}
 
 		g.Run(path, typeFlag, outputFlag, action)

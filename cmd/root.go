@@ -35,7 +35,7 @@ type OutputBuffer interface {
 var RootCmd = &cobra.Command{
 	Use:   "exemplar",
 	Short: "exemplar - the extensible code generation tool for Go",
-	Long: `Exemplar is a command line tool that can be used from the command line
+	Long: `Exemplar is a tool that can be used from the command line
 or as part of "//go:generate" comments to generate code based on structs or other types
 in your application.`,
 
