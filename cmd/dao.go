@@ -79,9 +79,11 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		action := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
 			funcMap := template.FuncMap{
-				"funcCase":  funcCase,
-				"updateSQL": updateSQLFunc,
-				"insertSQL": insertSQLFunc,
+				"funcCase":     funcCase,
+				"updateSQL":    updateSQLXFunc,
+				"insertSQL":    insertSQLXFunc,
+				"insertSQLPgx": insertSQLPgx,
+				"updateSQLPgx": updateSQLPgx,
 			}
 
 			templateData, templateErr := data.Asset(templateFlag)
@@ -125,7 +127,7 @@ func funcCase(f string) string {
 	return strings.Replace(strings.Title(CamelCase(f)), "Id", "ID", -1)
 }
 
-func insertSQLFunc(fields []parse.Field, tableName string) string {
+func insertSQLXFunc(fields []parse.Field, tableName string) string {
 	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
 	insertSQLVals := "VALUES ("
 	for i := 0; i < len(fields); i++ {
@@ -142,7 +144,7 @@ func insertSQLFunc(fields []parse.Field, tableName string) string {
 	return fmt.Sprintf("%s) %s)", insertSQL, insertSQLVals)
 }
 
-func updateSQLFunc(fields []parse.Field, tableName string) string {
+func updateSQLXFunc(fields []parse.Field, tableName string) string {
 	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
 	updateWhereSQL := fmt.Sprintf(" WHERE id = :id")
 	for i := 0; i < len(fields); i++ {
@@ -152,6 +154,44 @@ func updateSQLFunc(fields []parse.Field, tableName string) string {
 			updateSQL += fmt.Sprintf("%s = :%s", dbTag, dbTag)
 		} else {
 			updateSQL += fmt.Sprintf("%s = :%s, ", dbTag, dbTag)
+		}
+	}
+	return updateSQL + updateWhereSQL
+}
+
+func insertSQLPgx(fields []parse.Field, tableName string) string {
+	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
+	insertSQLVals := "VALUES ("
+	for i := 0; i < len(fields); i++ {
+		dbTag := fields[i].Tags["db"].Value
+		if i == (len(fields) - 1) {
+			insertSQL += fmt.Sprintf("%s", dbTag)
+			insertSQLVals += fmt.Sprintf("$%d", i+1)
+		} else {
+			insertSQL += fmt.Sprintf("%s, ", dbTag)
+			insertSQLVals += fmt.Sprintf("$%d, ", i+1)
+		}
+	}
+
+	return fmt.Sprintf("%s) %s)", insertSQL, insertSQLVals)
+
+}
+
+func updateSQLPgx(fields []parse.Field, tableName string) string {
+
+	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
+	var updateWhereSQL string
+	for i := 0; i < len(fields); i++ {
+		if strings.ToLower(fields[i].Name) == "id" {
+			updateWhereSQL = fmt.Sprintf(" WHERE id = $%d", i+1)
+			continue
+		}
+		dbTag := fields[i].Tags["db"].Value
+
+		if i == len(fields)-1 {
+			updateSQL += fmt.Sprintf("%s = $%d", dbTag, i+1)
+		} else {
+			updateSQL += fmt.Sprintf("%s = $%d, ", dbTag, i+1)
 		}
 	}
 	return updateSQL + updateWhereSQL

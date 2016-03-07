@@ -1,31 +1,81 @@
-import "github.com/jmoiron/sqlx"
-import "github.com/uberbrodt/exemplar/model"
 import "fmt"
+import "github.com/jackc/pgx"
 
 {{range $import := .Imports}}
 import "{{$import.ImportedName}}"
 {{end}}
 
-type {{.DAOName}} struct { DB model.ExemplarSqlx }
+type {{.DAOName}} struct { DB *pgx.ConnPool }
+
+
+//Scans the row into a new *{{$.StructTypeName}}
+func Scan{{ $.StructTypeName }}Row (row *pgx.Row) (*{{$.StructTypeName}}, error) {
+{{range $index, $field := .Fields -}}
+    var v{{$index}} {{$field.TypeName}}
+{{end}}
+    err := row.Scan(
+{{range $index, $field := .Fields -}}
+        &v{{$index}},
+{{ end -}}
+    )
+    if err != nil {
+        return nil, err
+    }
+    res := new({{$.StructTypeName}})
+{{range $index, $field := .Fields -}}
+    res.{{$field.Name}} = v{{$index }}
+{{ end -}}
+   return res, nil
+}
+
+//Scans the rows into a new []*{{$.StructTypeName}}
+func Scan{{ $.StructTypeName }}Rows(rows *pgx.Rows) ([]*{{$.StructTypeName}}, error) {
+    results := make([]*{{$.StructTypeName}}, 0, {{len .Fields}})
+    defer rows.Close()
+    for rows.Next() {
+    {{range $index, $field := .Fields -}}
+        var v{{$index}} {{$field.TypeName}}
+    {{ end -}}
+        err := rows.Scan(
+    {{range $index, $field := .Fields -}}
+            &v{{$index}},
+    {{ end -}}
+        )
+        if err != nil {
+            return nil, err
+        }
+        res := new({{$.StructTypeName}})
+    {{range $index, $field := .Fields -}}
+        res.{{$field.Name}} = v{{$index }}
+    {{ end -}}
+        results = append(results, res) 
+    }
+    return results, nil
+}
+
+//Format a *{{$.StructTypeName}} into a slice that can be used in insert and update statements
+func ExecArgs{{ $.StructTypeName }}(v *{{$.StructTypeName}}) []interface{}{
+vals := []interface{} {
+    {{range $index, $field := .Fields -}}
+        v.{{$field.Name}},
+    {{ end -}}
+    }
+  return vals
+}
 
 {{range $field := .Fields}}
 func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
-    var x {{$.StructTypeName}}
     sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
-    err := store.DB.QueryRowx(sql, p).StructScan(&x) 
-    return &x, err
+    return Scan{{ $.StructTypeName }}Row(store.DB.QueryRow(sql, p))
 }
 
-func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
-    var x {{$.StructTypeName}} 
+func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *pgx.Tx) (*{{$.StructTypeName}}, error) {
     sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
     
-    err := tx.QueryRowx(sql, p).StructScan(&x)
-    return &x, err
+    return Scan{{ $.StructTypeName }}Row(tx.QueryRow(sql, p))
 }
 
 func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.TypeName}}, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
-    x := make([]*{{$.StructTypeName}}, 0)
     sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
     if orderBy != "" {
         sql += fmt.Sprintf("ORDER BY %s ", orderBy)
@@ -38,20 +88,12 @@ func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.Typ
     if offset > 0 {
         sql += fmt.Sprintf("OFFSET %d", offset)
     }
-    rows, err := store.DB.Queryx(sql, p)
-    if err != nil { return x, err }
-    defer rows.Close()
-    for rows.Next() {
-        i := new({{$.StructTypeName}})
-        scanErr := rows.StructScan(i)
-        if scanErr != nil { return x,scanErr }
-        x = append(x, i)
-    }
-    return x, nil
+    rows, err := store.DB.Query(sql, p)
+    if err != nil { return nil, err }
+    return Scan{{ $.StructTypeName }}Rows(rows)
 }
 
-func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
-    x := make([]*{{$.StructTypeName}}, 0)
+func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *pgx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
     sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
     if orderBy != "" {
         sql += fmt.Sprintf("ORDER BY %s ", orderBy)
@@ -64,16 +106,10 @@ func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.T
     if offset > 0 {
         sql += fmt.Sprintf("OFFSET %d", offset)
     }
-    rows, err := tx.Queryx(sql, p)
-    if err != nil { return x, err }
+    rows, err := tx.Query(sql, p)
+    if err != nil { return nil, err }
     defer rows.Close()
-    for rows.Next() {
-        i := new({{$.StructTypeName}})
-        scanErr := rows.StructScan(i)
-        if scanErr != nil { return x,scanErr }
-        x = append(x, i)
-    }
-    return x, nil
+    return Scan{{ $.StructTypeName }}Rows(rows)
 }
 {{end}}
 
@@ -85,7 +121,7 @@ func (store *{{.DAOName}}) Save(o *{{.StructTypeName}}) error {
     }
 }
 
-func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
     if o.NeedsInsert {
         return store.insertTx(o, tx)
     } else {
@@ -95,8 +131,13 @@ func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
 
 func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
     
-    sql := "{{insertSQL .Fields .TableName}}"
-    _, err := store.DB.NamedExec(sql, o)
+    sql := "{{insertSQLPgx .Fields .TableName}}"
+    stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_insert",sql)
+    if pstmtErr != nil {
+        return pstmtErr
+    }
+
+    _, err := store.DB.Exec(stmt.SQL, ExecArgs{{ $.StructTypeName }}(o)...)
     if err == nil {
        o.NeedsInsert = false
     }
@@ -105,24 +146,28 @@ func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
 
 func (store *{{.DAOName}}) update(o *{{.StructTypeName}}) error {
 
-    sql := "{{updateSQL .Fields .TableName}}"
-    _, err := store.DB.NamedExec(sql, o)
+    sql := "{{updateSQLPgx .Fields .TableName}}"
+    stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_update",sql)
+    if pstmtErr != nil {
+        return pstmtErr
+    }
+    _, err := store.DB.Exec(stmt.SQL, ExecArgs{{ $.StructTypeName }}(o)...)
     return err
 }
 
-func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
     
-    sql := "{{insertSQL .Fields .TableName}}"
-    _, err := tx.NamedExec(sql, o)
+    sql := "{{insertSQLPgx .Fields .TableName}}"
+    _, err := tx.Exec(sql,ExecArgs{{ $.StructTypeName }}(o)...)
     if err == nil {
        o.NeedsInsert = false
     }
     return err
 }
 
-func (store *{{.DAOName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.DAOName}}) updateTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
 
-    sql := "{{updateSQL .Fields .TableName}}"
-    _, err := tx.NamedExec(sql, o)
+    sql := "{{updateSQLPgx .Fields .TableName}}"
+    _, err := tx.Exec(sql, ExecArgs{{ $.StructTypeName }}(o)...)
     return err
 }
