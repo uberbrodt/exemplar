@@ -1,6 +1,5 @@
-//package exemplar
+package main
 
-/*
 import (
 	"fmt"
 	"go/build"
@@ -14,19 +13,23 @@ import (
 )
 
 func TestEndToEnd(t *testing.T) {
-	dir, err := ioutil.TempDir("", "propertizer")
+	dir, err := ioutil.TempDir("", "exemplar")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	// Create stringer in temporary directory.
-	propertizer := filepath.Join(dir, "propertizer.exe")
-	err = run("go", "build", "-o", propertizer, "propertizer.go")
+	// Create exemplar in temporary directory.
+	exemplar := filepath.Join(dir, "exemplar.exe")
+	err = run("go", "build", "-o", exemplar, "main.go")
 	if err != nil {
-		t.Fatalf("building propertizer: %s", err)
+		t.Fatalf("building exemplar: %s", err)
 	}
+	testPropertizer(t, exemplar, dir)
+}
+
+func testPropertizer(t *testing.T, exemplar, dir string) {
 	// Read the testdata directory.
-	fd, err := os.Open("testdata")
+	fd, err := os.Open("testdata/propertizer")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,22 +48,23 @@ func TestEndToEnd(t *testing.T) {
 			t.Logf("cgo is no enabled for %s", name)
 			continue
 		}
-		// Names are known to be ASCII and long enough.
+		// Names are known to be ASCII and long enough. Might make this
+		//typeName := fmt.Sprintf("%c%s", name[0]+'A'-'a', name[1:len(name)-len(".go")])
 		typeName := fmt.Sprintf("%c%s", name[0]+'A'-'a', name[1:len(name)-len(".go")])
-		propertizerCompileAndRun(t, dir, propertizer, typeName, name)
+		exemplarCompileAndRun(t, dir, "testdata/propertizer", exemplar, typeName, name, "_properties.go")
 	}
 }
 
-func propertizerCompileAndRun(t *testing.T, dir, stringer, typeName, fileName string) {
+func exemplarCompileAndRun(t *testing.T, dir, srcDir, exemplar, typeName, fileName, suffix string) {
 	t.Logf("run: %s %s\n", fileName, typeName)
 	source := filepath.Join(dir, fileName)
-	err := copy(source, filepath.Join("testdata", fileName))
+	err := copy(source, filepath.Join(srcDir, fileName))
 	if err != nil {
 		t.Fatalf("copying file to temporary directory: %s", err)
 	}
-	stringSource := filepath.Join(dir, typeName+"_properties.go")
-	// Run stringer in temporary directory.
-	err = run(stringer, "-type", typeName, "-output", stringSource, source)
+	stringSource := filepath.Join(dir, typeName+suffix)
+	// Run exemplar in temporary directory.
+	err = run(exemplar, "propertizer", "--type", typeName, "--output", stringSource, source)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,9 +94,9 @@ func copy(to, from string) error {
 // run runs a single command and returns an error if it does not succeed.
 // os/exec should have this function, to be honest.
 func run(name string, arg ...string) error {
+	fmt.Printf("cmd: %s, args: %+v \n", name, arg)
 	cmd := exec.Command(name, arg...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
-*/

@@ -56,7 +56,7 @@ var propertizerCmd = &cobra.Command{
 
 		propertizer := func(typeName string, fields []parse.Field, imports []parse.Import) {
 
-			g.Printf("import \"fmt\"\n") // Used by all methods.
+			//g.Printf("import \"fmt\"\n") // Used by all methods.
 			if len(fields) == 0 {
 				log.Fatalf("no fields defined for type %s", typeName)
 			}
