@@ -11,14 +11,14 @@ type {{.DAOName}} struct { DB model.ExemplarSqlx }
 {{range $field := .Fields}}
 func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
     var x {{$.StructTypeName}}
-    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? LIMIT 1"
     err := store.DB.QueryRowx(sql, p).StructScan(&x) 
     return &x, err
 }
 
 func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
     var x {{$.StructTypeName}} 
-    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? LIMIT 1"
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? LIMIT 1"
     
     err := tx.QueryRowx(sql, p).StructScan(&x)
     return &x, err
@@ -26,7 +26,7 @@ func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeNa
 
 func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.TypeName}}, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
     x := make([]*{{$.StructTypeName}}, 0)
-    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? "
     if orderBy != "" {
         sql += fmt.Sprintf("ORDER BY %s ", orderBy)
     }
@@ -52,7 +52,7 @@ func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.Typ
 
 func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
     x := make([]*{{$.StructTypeName}}, 0)
-    sql := "SELECT * FROM {{$.TableName}} WHERE {{$field.Tags.db.Value}} = ? "
+    sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? "
     if orderBy != "" {
         sql += fmt.Sprintf("ORDER BY %s ", orderBy)
     }

@@ -92,6 +92,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 				"insertSQL":    insertSQLXFunc,
 				"insertSQLPgx": insertSQLPgx,
 				"updateSQLPgx": updateSQLPgx,
+				"nameOrTag":    nameOrTag,
 			}
 
 			templateData, templateErr := data.Asset(templateFlag)
@@ -104,7 +105,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 
 			filtered := make([]parse.Field, 0)
 			for _, field := range fields {
-				if strings.TrimSpace(field.Tags["db"].Value) != "" && field.Tags["exclude_dao"].Value != "true" && field.Name != "NeedsInsert" {
+				if field.Tags["exclude_dao"].Value != "true" && field.Name != "NeedsInsert" {
 					filtered = append(filtered, field)
 				}
 			}
@@ -139,7 +140,7 @@ func insertSQLXFunc(fields []parse.Field, tableName string) string {
 	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
 	insertSQLVals := "VALUES ("
 	for i := 0; i < len(fields); i++ {
-		dbTag := fields[i].Tags["db"].Value
+		dbTag := nameOrTag(fields[i])
 		if i == (len(fields) - 1) {
 			insertSQL += fmt.Sprintf("%s", dbTag)
 			insertSQLVals += fmt.Sprintf(":%s", dbTag)
@@ -156,7 +157,7 @@ func updateSQLXFunc(fields []parse.Field, tableName string) string {
 	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
 	updateWhereSQL := fmt.Sprintf(" WHERE id = :id")
 	for i := 0; i < len(fields); i++ {
-		dbTag := fields[i].Tags["db"].Value
+		dbTag := nameOrTag(fields[i])
 
 		if i == len(fields)-1 {
 			updateSQL += fmt.Sprintf("%s = :%s", dbTag, dbTag)
@@ -171,7 +172,7 @@ func insertSQLPgx(fields []parse.Field, tableName string) string {
 	insertSQL := fmt.Sprintf("INSERT INTO %s (", tableName)
 	insertSQLVals := "VALUES ("
 	for i := 0; i < len(fields); i++ {
-		dbTag := fields[i].Tags["db"].Value
+		dbTag := nameOrTag(fields[i])
 		if i == (len(fields) - 1) {
 			insertSQL += fmt.Sprintf("%s", dbTag)
 			insertSQLVals += fmt.Sprintf("$%d", i+1)
@@ -190,11 +191,11 @@ func updateSQLPgx(fields []parse.Field, tableName string) string {
 	updateSQL := fmt.Sprintf("UPDATE %s SET ", tableName)
 	var updateWhereSQL string
 	for i := 0; i < len(fields); i++ {
-		if strings.ToLower(fields[i].Name) == "id" {
+		dbTag := nameOrTag(fields[i])
+		if dbTag == "id" {
 			updateWhereSQL = fmt.Sprintf(" WHERE id = $%d", i+1)
 			continue
 		}
-		dbTag := fields[i].Tags["db"].Value
 
 		if i == len(fields)-1 {
 			updateSQL += fmt.Sprintf("%s = $%d", dbTag, i+1)
@@ -203,4 +204,12 @@ func updateSQLPgx(fields []parse.Field, tableName string) string {
 		}
 	}
 	return updateSQL + updateWhereSQL
+}
+
+func nameOrTag(field parse.Field) string {
+	if strings.TrimSpace(field.Tags["db"].Value) != "" {
+		return strings.TrimSpace(field.Tags["db"].Value)
+	} else {
+		return snaker.CamelToSnake(field.Name)
+	}
 }
