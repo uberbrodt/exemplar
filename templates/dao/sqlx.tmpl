@@ -6,17 +6,18 @@ import "fmt"
 import "{{$import.ImportedName}}"
 {{end}}
 
-type {{.DAOName}} struct { DB model.ExemplarSqlx }
+type {{.FinderName}} struct { DB model.ExemplarSqlx }
+type {{.StoreName}} struct { DB model.ExemplarSqlx }
 
 {{range $field := .Fields}}
-func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
+func (store *{{$.FinderName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
     var x {{$.StructTypeName}}
     sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? LIMIT 1"
     err := store.DB.QueryRowx(sql, p).StructScan(&x) 
     return &x, err
 }
 
-func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
+func (store *{{$.FinderName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
     var x {{$.StructTypeName}} 
     sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? LIMIT 1"
     
@@ -24,7 +25,7 @@ func (store *{{$.DAOName}}) FindBy{{$field.Name | funcCase}}Tx(p {{$field.TypeNa
     return &x, err
 }
 
-func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.TypeName}}, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
+func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.TypeName}}, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
     x := make([]*{{$.StructTypeName}}, 0)
     sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? "
     if orderBy != "" {
@@ -50,7 +51,7 @@ func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}(p {{$field.Typ
     return x, nil
 }
 
-func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
+func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.TypeName}}, tx *sqlx.Tx, orderBy interface{}, limit int, offset int) ([]*{{$.StructTypeName}}, error) {
     x := make([]*{{$.StructTypeName}}, 0)
     sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? "
     if orderBy != "" {
@@ -77,7 +78,7 @@ func (store *{{$.DAOName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$field.T
 }
 {{end}}
 
-func (store *{{.DAOName}}) Save(o *{{.StructTypeName}}) error {
+func (store *{{.StoreName}}) Save(o *{{.StructTypeName}}) error {
     if o.NeedsInsert {
         return store.insert(o)
     } else {
@@ -85,7 +86,7 @@ func (store *{{.DAOName}}) Save(o *{{.StructTypeName}}) error {
     }
 }
 
-func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.StoreName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     if o.NeedsInsert {
         return store.insertTx(o, tx)
     } else {
@@ -93,7 +94,7 @@ func (store *{{.DAOName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     }
 }
 
-func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
+func (store *{{.StoreName}}) insert(o *{{.StructTypeName}}) error {
     
     sql := "{{insertSQL .Fields .TableName}}"
     _, err := store.DB.NamedExec(sql, o)
@@ -103,14 +104,14 @@ func (store *{{.DAOName}}) insert(o *{{.StructTypeName}}) error {
     return err
 }
 
-func (store *{{.DAOName}}) update(o *{{.StructTypeName}}) error {
+func (store *{{.StoreName}}) update(o *{{.StructTypeName}}) error {
 
     sql := "{{updateSQL .Fields .TableName}}"
     _, err := store.DB.NamedExec(sql, o)
     return err
 }
 
-func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.StoreName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     
     sql := "{{insertSQL .Fields .TableName}}"
     _, err := tx.NamedExec(sql, o)
@@ -120,7 +121,7 @@ func (store *{{.DAOName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     return err
 }
 
-func (store *{{.DAOName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (store *{{.StoreName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
 
     sql := "{{updateSQL .Fields .TableName}}"
     _, err := tx.NamedExec(sql, o)

@@ -27,6 +27,7 @@ import (
 	"github.com/uberbrodt/exemplar/parse"
 )
 
+var finderNameFlag string
 var storeNameFlag string
 var templateFlag string
 var tableNameFlag string
@@ -36,9 +37,10 @@ func init() {
 	RootCmd.AddCommand(modelCmd)
 
 	// Here you will define your flags and configuration settings.
-	modelCmd.Flags().StringVarP(&storeNameFlag, "daoName", "s", "", "name of the type to generate")
+	modelCmd.Flags().StringVarP(&finderNameFlag, "finderName", "f", "", "name of the type where Find methods will be generated")
+	modelCmd.Flags().StringVarP(&storeNameFlag, "storeName", "s", "", "name of the type where insert/update methods will be generated")
 	modelCmd.Flags().StringVarP(&templateFlag, "tpl", "", "dao/sqlx", "Specify template to generate DAO's from")
-	modelCmd.Flags().StringVarP(&tplLocFlag, "tplFolder", "f", "./exemplar", "Specify location of custom template files. If unset, will look for builtin's or ./exemplar")
+	modelCmd.Flags().StringVarP(&tplLocFlag, "tplFolder", "", "./exemplar", "Specify location of custom template files. If unset, will look for builtin's or ./exemplar")
 	modelCmd.Flags().StringVarP(&tableNameFlag, "tableName", "", "", "The name of the db table associated with struct")
 
 }
@@ -76,6 +78,9 @@ func (store *FooStorePg) GetByID(id int) Foo {
 		}
 		if storeNameFlag == "" {
 			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
+		}
+		if finderNameFlag == "" {
+			finderNameFlag = fmt.Sprintf("%sFinder", typeFlag)
 		}
 
 		if templateFlag == "" {
@@ -115,17 +120,19 @@ func (store *FooStorePg) GetByID(id int) Foo {
 					Fields         []parse.Field
 					StructTypeName string
 					TableName      string
-					DAOName        string
+					FinderName     string
+					StoreName      string
 				}{
 					Imports:        imports,
 					Fields:         filtered,
 					StructTypeName: typeName,
 					TableName:      tableNameFlag,
-					DAOName:        storeNameFlag})
+					FinderName:     finderNameFlag,
+					StoreName:      storeNameFlag})
 		}
 
 		if outputFlag == "" {
-			outputFlag = filepath.Join(strings.Replace(path[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(storeNameFlag))))
+			outputFlag = filepath.Join(strings.Replace(path[0], ".go", "", -1), strings.ToLower(fmt.Sprintf("%s_dao.go", snaker.CamelToSnake(typeFlag))))
 		}
 
 		g.Run(path, typeFlag, outputFlag, action)
