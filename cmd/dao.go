@@ -110,7 +110,7 @@ func (store *FooStorePg) GetByID(id int) Foo {
 
 			filtered := make([]parse.Field, 0)
 			for _, field := range fields {
-				if field.Tags["exclude_dao"].Value != "true" && field.Name != "NeedsInsert" {
+				if field.Tags["exclude_dao"].Value != "true" {
 					filtered = append(filtered, field)
 				}
 			}

@@ -78,29 +78,11 @@ func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$fiel
 }
 {{end}}
 
-func (store *{{.StoreName}}) Save(o *{{.StructTypeName}}) error {
-    if o.NeedsInsert {
-        return store.insert(o)
-    } else {
-        return store.update(o) 
-    }
-}
-
-func (store *{{.StoreName}}) SaveTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
-    if o.NeedsInsert {
-        return store.insertTx(o, tx)
-    } else {
-        return store.updateTx(o, tx) 
-    }
-}
 
 func (store *{{.StoreName}}) insert(o *{{.StructTypeName}}) error {
     
     sql := "{{insertSQL .Fields .TableName}}"
     _, err := store.DB.NamedExec(sql, o)
-    if err == nil {
-       o.NeedsInsert = false
-    }
     return err
 }
 

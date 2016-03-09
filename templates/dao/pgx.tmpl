@@ -114,23 +114,8 @@ func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$fiel
 }
 {{end}}
 
-func (store *{{$.StoreName}}) Save(o *{{.StructTypeName}}) error {
-    if o.NeedsInsert {
-        return store.insert(o)
-    } else {
-        return store.update(o) 
-    }
-}
 
-func (store *{{$.StoreName}}) SaveTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
-    if o.NeedsInsert {
-        return store.insertTx(o, tx)
-    } else {
-        return store.updateTx(o, tx) 
-    }
-}
-
-func (store *{{$.StoreName}}) insert(o *{{.StructTypeName}}) error {
+func (store *{{$.StoreName}}) Insert(o *{{.StructTypeName}}) error {
     
     sql := "{{insertSQLPgx .Fields .TableName}}"
     stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_insert",sql)
@@ -139,13 +124,10 @@ func (store *{{$.StoreName}}) insert(o *{{.StructTypeName}}) error {
     }
 
     _, err := store.DB.Exec(stmt.SQL, execArgs{{ $.StructTypeName }}(o)...)
-    if err == nil {
-       o.NeedsInsert = false
-    }
     return err
 }
 
-func (store *{{$.StoreName}}) update(o *{{.StructTypeName}}) error {
+func (store *{{$.StoreName}}) Update(o *{{.StructTypeName}}) error {
 
     sql := "{{updateSQLPgx .Fields .TableName}}"
     stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_update",sql)
@@ -156,17 +138,14 @@ func (store *{{$.StoreName}}) update(o *{{.StructTypeName}}) error {
     return err
 }
 
-func (store *{{$.StoreName}}) insertTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
+func (store *{{$.StoreName}}) InsertTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
     
     sql := "{{insertSQLPgx .Fields .TableName}}"
     _, err := tx.Exec(sql,execArgs{{ $.StructTypeName }}(o)...)
-    if err == nil {
-       o.NeedsInsert = false
-    }
     return err
 }
 
-func (store *{{$.StoreName}}) updateTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
+func (store *{{$.StoreName}}) UpdateTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
 
     sql := "{{updateSQLPgx .Fields .TableName}}"
     _, err := tx.Exec(sql, execArgs{{ $.StructTypeName }}(o)...)
