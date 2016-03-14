@@ -6,7 +6,7 @@ import "{{$import.ImportedName}}"
 {{end}}
 
 type {{.FinderName}} struct { DB *pgx.ConnPool }
-type {{.StoreName}} struct { DB *pgx.ConnPool }
+type {{.MapperName}} struct { DB *pgx.ConnPool }
 
 
 //Scans the row into a new *{{$.StructTypeName}}
@@ -115,39 +115,63 @@ func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$fiel
 {{end}}
 
 
-func (store *{{$.StoreName}}) Insert(o *{{.StructTypeName}}) error {
+func (mapper *{{$.MapperName}}) Insert(o *{{.StructTypeName}}) error {
     
     sql := "{{insertSQLPgx .Fields .TableName}}"
-    stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_insert",sql)
+    stmt, pstmtErr := mapper.DB.Prepare("{{ $.StructTypeName }}_insert",sql)
     if pstmtErr != nil {
         return pstmtErr
     }
 
-    _, err := store.DB.Exec(stmt.SQL, execArgs{{ $.StructTypeName }}(o)...)
+    _, err := mapper.DB.Exec(stmt.SQL, execArgs{{ $.StructTypeName }}(o)...)
     return err
 }
 
-func (store *{{$.StoreName}}) Update(o *{{.StructTypeName}}) error {
+func (mapper *{{$.MapperName}}) Update(o *{{.StructTypeName}}) error {
 
     sql := "{{updateSQLPgx .Fields .TableName}}"
-    stmt, pstmtErr := store.DB.Prepare("{{ $.StructTypeName }}_update",sql)
+    stmt, pstmtErr := mapper.DB.Prepare("{{ $.StructTypeName }}_update",sql)
     if pstmtErr != nil {
         return pstmtErr
     }
-    _, err := store.DB.Exec(stmt.SQL, execArgs{{ $.StructTypeName }}(o)...)
+    _, err := mapper.DB.Exec(stmt.SQL, execArgs{{ $.StructTypeName }}(o)...)
     return err
 }
 
-func (store *{{$.StoreName}}) InsertTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
+func (mapper *{{$.MapperName}}) InsertTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
     
     sql := "{{insertSQLPgx .Fields .TableName}}"
     _, err := tx.Exec(sql,execArgs{{ $.StructTypeName }}(o)...)
     return err
 }
 
-func (store *{{$.StoreName}}) UpdateTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
+func (mapper *{{$.MapperName}}) UpdateTx(o *{{.StructTypeName}}, tx *pgx.Tx) error {
 
     sql := "{{updateSQLPgx .Fields .TableName}}"
     _, err := tx.Exec(sql, execArgs{{ $.StructTypeName }}(o)...)
     return err
 }
+{{range $field := .Fields -}}
+{{with $name := nameOrTag $field}}
+{{ if eq $name "id" }}
+
+func (mapper *{{$.MapperName}}) Delete(o *{{$.StructTypeName}}) error { 
+    sql := "DELETE FROM {{ $.TableName -}} WHERE id = $1"
+    stmt, pstmtErr := mapper.DB.Prepare("{{ $.StructTypeName }}_delete",sql)
+    if pstmtErr != nil {
+        return pstmtErr
+    }
+
+    _, err := mapper.DB.Exec(stmt.SQL, o.{{$field.Name}})
+    return err
+}
+
+func (mapper *{{$.MapperName}}) DeleteTx(o *{{$.StructTypeName}}, tx *pgx.Tx) error { 
+    sql := "DELETE FROM {{ $.TableName -}} WHERE id = $1"
+
+    _, err := tx.Exec(sql, o.{{$field.Name}})
+    return err
+}
+{{end}}
+{{end}}
+{{end}}

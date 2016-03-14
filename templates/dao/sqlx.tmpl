@@ -7,7 +7,7 @@ import "{{$import.ImportedName}}"
 {{end}}
 
 type {{.FinderName}} struct { DB model.ExemplarSqlx }
-type {{.StoreName}} struct { DB model.ExemplarSqlx }
+type {{.MapperName}} struct { DB model.ExemplarSqlx }
 
 {{range $field := .Fields}}
 func (store *{{$.FinderName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
@@ -79,21 +79,21 @@ func (store *{{$.FinderName}}) FindSliceBy{{$field.Name | funcCase}}Tx(p {{$fiel
 {{end}}
 
 
-func (store *{{.StoreName}}) insert(o *{{.StructTypeName}}) error {
+func (mapper *{{.MapperName}}) insert(o *{{.StructTypeName}}) error {
     
     sql := "{{insertSQL .Fields .TableName}}"
-    _, err := store.DB.NamedExec(sql, o)
+    _, err := mapper.DB.NamedExec(sql, o)
     return err
 }
 
-func (store *{{.StoreName}}) update(o *{{.StructTypeName}}) error {
+func (mapper *{{.MapperName}}) update(o *{{.StructTypeName}}) error {
 
     sql := "{{updateSQL .Fields .TableName}}"
-    _, err := store.DB.NamedExec(sql, o)
+    _, err := mapper.DB.NamedExec(sql, o)
     return err
 }
 
-func (store *{{.StoreName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (mapper *{{.MapperName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
     
     sql := "{{insertSQL .Fields .TableName}}"
     _, err := tx.NamedExec(sql, o)
@@ -103,9 +103,30 @@ func (store *{{.StoreName}}) insertTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error
     return err
 }
 
-func (store *{{.StoreName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
+func (mapper *{{.MapperName}}) updateTx(o *{{.StructTypeName}}, tx *sqlx.Tx) error {
 
     sql := "{{updateSQL .Fields .TableName}}"
     _, err := tx.NamedExec(sql, o)
     return err
 }
+{{range $field := .Fields -}}
+{{with $name := nameOrTag $field}}
+{{ if eq $name "id" }}
+func (mapper *{{$.MapperName}}) Delete(o *{{$.StructTypeName}}) error { 
+    sql := "DELETE FROM {{ $.TableName -}} WHERE id = $1"
+
+    _, err := mapper.DB.Exec(sql, o.{{$field.Name}})
+    return err
+}
+
+func (mapper *{{$.MapperName}}) DeleteTx(o *{{$.StructTypeName}}, tx *sqlx.Tx) error { 
+    sql := "DELETE FROM {{ $.TableName -}} WHERE id = $1"
+
+    _, err := tx.Exec(sql, o.{{$field.Name}})
+    return err
+}
+
+
+{{end}}
+{{end}}
+{{end}}

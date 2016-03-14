@@ -1,4 +1,4 @@
-// Copyright © 2016 NAME HERE <chris@uberbrodt.net>
+// Copyright © 2016 Christopher Brodt <chris@uberbrodt.net>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import (
 )
 
 var finderNameFlag string
-var storeNameFlag string
+var mapperNameFlag string
 var templateFlag string
 var tableNameFlag string
 var tplLocFlag string
@@ -38,7 +38,7 @@ func init() {
 
 	// Here you will define your flags and configuration settings.
 	modelCmd.Flags().StringVarP(&finderNameFlag, "finderName", "f", "", "name of the type where Find methods will be generated")
-	modelCmd.Flags().StringVarP(&storeNameFlag, "storeName", "s", "", "name of the type where insert/update methods will be generated")
+	modelCmd.Flags().StringVarP(&mapperNameFlag, "mapperName", "s", "", "name of the type where insert/update methods will be generated")
 	modelCmd.Flags().StringVarP(&templateFlag, "tpl", "", "dao/sqlx", "Specify template to generate DAO's from")
 	modelCmd.Flags().StringVarP(&tplLocFlag, "tplFolder", "", "./exemplar", "Specify location of custom template files. If unset, will look for builtin's or ./exemplar")
 	modelCmd.Flags().StringVarP(&tableNameFlag, "tableName", "", "", "The name of the db table associated with struct")
@@ -76,8 +76,8 @@ func (store *FooStorePg) GetByID(id int) Foo {
 			fmt.Println("MISSING REQUIRED ARGUMENT: --type needs to be set")
 			os.Exit(-1)
 		}
-		if storeNameFlag == "" {
-			storeNameFlag = fmt.Sprintf("%sStore", typeFlag)
+		if mapperNameFlag == "" {
+			mapperNameFlag = fmt.Sprintf("%sMapper", typeFlag)
 		}
 		if finderNameFlag == "" {
 			finderNameFlag = fmt.Sprintf("%sFinder", typeFlag)
@@ -121,14 +121,14 @@ func (store *FooStorePg) GetByID(id int) Foo {
 					StructTypeName string
 					TableName      string
 					FinderName     string
-					StoreName      string
+					MapperName     string
 				}{
 					Imports:        imports,
 					Fields:         filtered,
 					StructTypeName: typeName,
 					TableName:      tableNameFlag,
 					FinderName:     finderNameFlag,
-					StoreName:      storeNameFlag})
+					MapperName:     mapperNameFlag})
 		}
 
 		if outputFlag == "" {
