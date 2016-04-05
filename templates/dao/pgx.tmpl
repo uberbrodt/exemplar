@@ -64,6 +64,26 @@ vals := []interface{} {
   return vals
 }
 
+func (store *{{$.FinderName}}) FindOne(sql string, args []interface{}) (*{{$.StructTypeName}}, error) {
+    return scan{{ $.StructTypeName }}Row(store.DB.QueryRow(sql, args...))
+}
+
+func (store *{{$.FinderName}}) FindAll(sql string, args []interface{}) ([]*{{$.StructTypeName}}, error) {
+    rows, err := store.DB.Query(sql, args...)
+    if err != nil { return nil, err }
+    return scan{{ $.StructTypeName }}Rows(rows)
+}
+
+func (store *{{$.FinderName}}) FindOneTx(sql string, args []interface{}, tx *pgx.Tx) (*{{$.StructTypeName}}, error) {
+    return scan{{ $.StructTypeName }}Row(store.DB.QueryRow(sql, args...))
+}
+
+func (store *{{$.FinderName}}) FindAllTx(sql string, args []interface{}, tx *pgx.Tx) ([]*{{$.StructTypeName}}, error) {
+    rows, err := tx.Query(sql, args...)
+    if err != nil { return nil, err }
+    return scan{{ $.StructTypeName }}Rows(rows)
+}
+
 {{range $field := .Fields}}
 func (store *{{$.FinderName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
     sql := "SELECT * FROM {{$.TableName}} WHERE {{nameOrTag $field}} = ? LIMIT 1"

@@ -9,6 +9,46 @@ import "{{$import.ImportedName}}"
 type {{.FinderName}} struct { DB model.ExemplarSqlx }
 type {{.MapperName}} struct { DB model.ExemplarSqlx }
 
+func (store *{{$.FinderName}}) FindOne(sql string, args []interface{}) (*{{$.StructTypeName}}, error) {
+    var x {{$.StructTypeName}}
+    err := store.DB.QueryRowx(sql, args).StructScan(&x) 
+    return &x, err
+}
+
+func (store *{{$.FinderName}}) FindAll(sql string, args []interface{}) ([]*{{$.StructTypeName}}, error) {
+    x := make([]*{{$.StructTypeName}}, 0)
+    rows, err := store.DB.Queryx(sql, args)
+    if err != nil { return x, err }
+    defer rows.Close()
+    for rows.Next() {
+        i := new({{$.StructTypeName}})
+        scanErr := rows.StructScan(i)
+        if scanErr != nil { return x,scanErr }
+        x = append(x, i)
+    }
+    return x, nil
+}
+
+func (store *{{$.FinderName}}) FindOneTx(sql string, args []interface{}, tx *sqlx.Tx) (*{{$.StructTypeName}}, error) {
+    var x {{$.StructTypeName}}
+    err := tx.QueryRowx(sql, args).StructScan(&x) 
+    return &x, err
+}
+
+func (store *{{$.FinderName}}) FindAllTx(sql string, args []interface{}, tx *sqlx.Tx) ([]*{{$.StructTypeName}}, error) {
+    x := make([]*{{$.StructTypeName}}, 0)
+    rows, err := tx.Queryx(sql, args)
+    if err != nil { return x, err }
+    defer rows.Close()
+    for rows.Next() {
+        i := new({{$.StructTypeName}})
+        scanErr := rows.StructScan(i)
+        if scanErr != nil { return x,scanErr }
+        x = append(x, i)
+    }
+    return x, nil
+}
+
 {{range $field := .Fields}}
 func (store *{{$.FinderName}}) FindBy{{$field.Name | funcCase}}(p {{$field.TypeName}}) (*{{$.StructTypeName}}, error) {
     var x {{$.StructTypeName}}
