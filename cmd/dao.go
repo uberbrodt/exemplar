@@ -216,7 +216,6 @@ func updateSQLPgx(fields []parse.Field, tableName string) string {
 func nameOrTag(field parse.Field) string {
 	if strings.TrimSpace(field.Tags["db"].Value) != "" {
 		return strings.TrimSpace(field.Tags["db"].Value)
-	} else {
-		return snaker.CamelToSnake(field.Name)
 	}
+	return snaker.CamelToSnake(field.Name)
 }
