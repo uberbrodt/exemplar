@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/uberbrodt/exemplar)](https://goreportcard.com/report/github.com/uberbrodt/exemplar)
+
 #Exemplar: A Go Code Generator
 
 Exempler is a code generator for Go based off of [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer). It parses the target package, generates code based off provided struct(s) and then verfies that the package still works. It even runs `gofmt` afterwards so that your generated code is pretty!
