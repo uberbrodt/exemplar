@@ -1,13 +1,56 @@
 #Exemplar: A Go Code Generator
 
-Exempler is a code generator for Go based off of [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer). It parses the target package, generates code based off provided struct(s) and then verfies that the package still works. It even runs `gofmt` afterwards so that your generated code is pretty!
+Exemplar is an extensible code generator for generating exemplary Go code! It's based off the [Stringer](https://godoc.org/github.com/Go-zh/tools/cmd/stringer) tool that was used to [introduce](https://blog.golang.org/generate) Go generators. It parses the target package, generates code based off provided struct(s) and then verfies that the package still works. It even runs `gofmt` afterwards so that your generated code is pretty!
 
-Originally, this project was called Propertizer, and generated accessors and mutators for structs, but I realized that what I really needed was a way to generate DAO and RESTful resource-like code, becuase it's tedious to create and update. So I added in the nice [Cobrat](https://github.com/spf13/cobra) CLI tool and made Propertizer a sub command. The plan is to add two more commands:
+It currently consists of two commands:
 
-* `model` will generate DAO like code for a struct using [sqlx](https://github.com/jmoiron/sqlx). Support will expand eventually to support raw database/sql and other datastores as needed.
-*  `resource` will generate a set of REST methods and muxer routes (GET /foo/:id, PUT /foo/:id, etc) for a struct. The aim will be to make it solely standard library, but might support either [negroni](https://github.com/codegangsta/negroni) or [gin](https://github.com/gin-gonic/gin) out of the box
+* `dao` will generate DAO like code for a struct using [sqlx](https://github.com/jmoiron/sqlx) or [pgx](https://github.com/jackc/pgx). Support for  other drivers is unplanned at the moment, though should be easy to accomplish on your own by providing custom templates
+* `propertizer` will generate getters and setters for a struct. You are able to use struct tags to exclude method generation for fields.
+
+The following is under consideration
+
+*  `resource` will generate a set of REST methods and muxer routes (GET /foo/:id, PUT /foo/:id, etc) for a struct. The aim will be to make it solely standard library for performance & compatibility reasons, but might support either [negroni](https://github.com/codegangsta/negroni) or [gin](https://github.com/gin-gonic/gin) out of the box
+
+##Install
+`go get install github.com/uberbrodt/exemplar` will fetch the latest source and install the `exemplar` binary into your GOPATH.
 
 ##Commands
+###DAO: Generate query and persistance code for SQL databases
+
+As a statically typed language, lacking builtin generics, writing database access code can seem tedious when compared to dynamic languages like Ruby or Python. The `dao` command solves this by generating common finder and CRUD methods for any given struct. It will automatically convert field names to snake_case (so `ID` becomese `id`, `FirstName` becomes `first_name` etc.), though a name can be set via a `db` structtag.
+
+In order for `dao` to generate code correctly, the struct needs to meet the following requirements:
+
+* Must have a field either tagged or inferred as `id`. The field can be any simple type supported by the target DB.
+* Any persisted fields need to be of a simple type. i.e., `dao` doesn't know how to save a field of `[]string`. Any fields that should not or cannot be persisted should be marked with the following struct tag: `exclude_dao:"true"`
+
+####How To Use
+The `dao` command can be run from the commandline as a `go:generate` comment. Here's a basic example which indicates the struct to generate code for (`-type=Basicstruct`), output, and the name of the database table associated with the struct. Run `exemplar dao --help` for all the options.
+
+`exemplar dao --type=Basicstruct -o ./basicstruct_dao.go --tableName="basic_struct" --tpl="dao/pgx" ./basicstruct.go`
+
+The `--tpl` option is important. It indicates the file template to generate the code. Right now there are two available:
+
+* `dao/pgx` for accessing PostgreSQL databases
+* `dao/sqlx` for everything else using `jmoiron/sqlx`
+
+In the future, you will be able to pass in any template and have the following data injected when the command is run:
+
+					Imports        []parse.Import
+					Fields         []parse.Field
+					StructTypeName string
+					TableName      string
+					FinderName     string
+					MapperName     string
+####What's generated?
+The default templates will generate two new structs, a Finder and a Mapper (prefixed with it's type). The Finder has methods for each field: one that returns a single struct pointer, and another that returns a slice of struct pointers. The slice methods also accept offset and limit params so you can implement basic paging. For each Finder method, there is a companion method that accepts a Transaction object, so that higher level code can implement a Unit of Work pattern or just do manual transaction manipulation.
+
+
+The Mapper will have methods for Update, Insert, and Delete.
+
+Why two objects? Well, there may be cases where you want the Find methods in a different object than the CRUD methods. For example, you may not care, and just embed both into a business domain model, as in an ActiveRecord pattern.
+
+- - -
 
 ###Propertizer: Generate mutators and accessors for Go struct types.
 
@@ -87,6 +130,3 @@ Adding the flag `--getterPrefix` will preface the accessors with "Get". This is 
 * Handle _ and aliased imports
 * Auto generate tests for structs? We already compile the package after running, so really only useful if you're worried about code coverage metrics
 
-- - -
-###Model: Generate DAO's for structs
-Coming soon!
